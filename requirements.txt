@@ -1,7 +1,10 @@
 discord.py
-pymongo[srv]
+pymongo
 python-dotenv
 Flask
 beautifulsoup4
 requests
 Pillow
+fastapi
+uvicorn
+jinja2

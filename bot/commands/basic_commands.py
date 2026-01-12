@@ -416,7 +416,11 @@ https://user783667580106702848.pepich.de/""",
     )
     async def makefile(interaction: discord.Interaction, filename: str, content: str):
         try:
-            if filename == ".env" or filename == ".gitignore" or filename == "requirements.txt":
+            if (
+                filename == ".env"
+                or filename == ".gitignore"
+                or filename == "requirements.txt"
+            ):
                 await interaction.response.send_message(
                     embed=discord.Embed(
                         title="Error!",
