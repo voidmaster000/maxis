@@ -16,7 +16,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory=str(resource_path(".")))
 
 # Serve static files (CSS, JS, images) from 'public' directory
-app.mount("/", StaticFiles(directory=str(resource_path("public"))), name="public")
+app.mount("/public", StaticFiles(directory=str(resource_path("public"))), name="public")
 
 globalBot: commands.Bot | None = None
 
