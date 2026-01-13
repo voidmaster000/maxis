@@ -420,6 +420,8 @@ https://user783667580106702848.pepich.de/""",
                 filename == ".env"
                 or filename == ".gitignore"
                 or filename == "requirements.txt"
+                or filename == "LICENSE"
+                or filename == "README.md"
             ):
                 await interaction.response.send_message(
                     embed=discord.Embed(

@@ -321,7 +321,12 @@ def cleanup_temp_files():
         # Get all files in current directory
         for file_path in glob.glob("*"):
             # Skip important files
-            if file_path.startswith(".") or file_path == "requirements.txt":
+            if (
+                file_path.startswith(".")
+                or file_path == "requirements.txt"
+                or file_path == "LICENSE"
+                or file_path == "README.md"
+            ):
                 continue
 
             # Skip directories
