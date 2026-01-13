@@ -1,8 +1,6 @@
 discord.py
 pymongo
 python-dotenv
-Flask
-beautifulsoup4
 requests
 Pillow
 fastapi
