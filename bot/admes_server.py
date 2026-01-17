@@ -1,144 +1,88 @@
 """
-Admes TCP server for handling bot queries
+Admes HTTP client: send questions to the remote tunnel server and poll for answers.
+
+The remote server (exposed via Cloudflare tunnel) implements:
+- POST /question  {"question": "..."} -> {"status": "accepted", "sequence": n}
+- GET  /answer    -> {"sequence": n, "answer": "..."} (answer auto-clears after read)
 """
 
-import socket
-import threading
+import time
 from typing import Optional
 
-# Global socket streams
-socket_in: Optional[socket.socket] = None
-socket_out: Optional[socket.socket] = None
-server_socket: Optional[socket.socket] = None
-clients: list = []
+import requests
+
+ANSWER_TIMEOUT_SECONDS = 90.0
+
+# Base URL of the remote Admes bridge (e.g., https://abcd.trycloudflare.com)
+tunnel_url: Optional[str] = None
 
 
-def init_admes_server(port=12102):
-    """Initialize and start the Admes TCP server"""
-    global server_socket
-
-    def run_server():
-        global server_socket, socket_in, socket_out, clients
-
-        try:
-            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server_socket.bind(("0.0.0.0", port))
-            server_socket.listen(5)
-            print(f"Admes server started at port {port}!")
-
-            while True:
-                try:
-                    client_socket, client_address = server_socket.accept()
-                    print(
-                        f"New client joined at {client_address[0]}, port {client_address[1]}"
-                    )
-                    clients.append(client_socket)
-
-                    # Handle client in separate thread
-                    client_thread = threading.Thread(
-                        target=handle_client,
-                        args=(client_socket, client_address),
-                        daemon=True,
-                    )
-                    client_thread.start()
-                except Exception as e:
-                    if server_socket:
-                        print(f"Error accepting client: {e}")
-        except Exception as e:
-            print(f"Error starting Admes server: {e}")
-
-    server_thread = threading.Thread(target=run_server, daemon=True)
-    server_thread.start()
+def _base_url() -> Optional[str]:
+    if not tunnel_url:
+        return None
+    return tunnel_url.rstrip("/")
 
 
-def handle_client(client_socket: socket.socket, client_address):
-    """Handle individual client connection"""
-    global socket_in, socket_out
-
-    try:
-        # Set this client as the active connection
-        socket_in = client_socket
-        socket_out = client_socket
-
-        # Keep connection alive
-        while True:
-            if client_socket.fileno() == -1:  # Socket closed
-                break
-            try:
-                # Wait for data (with timeout to check if socket is still alive)
-                client_socket.settimeout(1.0)
-                data = client_socket.recv(1024)
-                if not data:
-                    break
-            except socket.timeout:
-                continue
-            except Exception:
-                break
-    except Exception as e:
-        print(f"Error handling client {client_address}: {e}")
-    finally:
-        if client_socket in clients:
-            clients.remove(client_socket)
-        if socket_in == client_socket:
-            socket_in = None
-        if socket_out == client_socket:
-            socket_out = None
-        try:
-            client_socket.close()
-        except:
-            pass
-        print(f"Client {client_address} disconnected")
+def init_admes_server(port: int = 0) -> None:
+    """No-op for backward compatibility; remote server runs elsewhere."""
+    if _base_url():
+        print(f"Admes remote endpoint configured at {_base_url()}")
+    else:
+        print("Admes remote endpoint is not configured (owner: run /admes_tunnel to set it)")
 
 
-def send_query(query: str) -> Optional[str]:
-    """Send query to Admes server and get response"""
-    global socket_in, socket_out
-
-    if socket_out is None or socket_in is None:
+def send_query(query: str, timeout: float = ANSWER_TIMEOUT_SECONDS) -> Optional[str]:
+    """Send a question to the remote bridge and poll for an answer until timeout."""
+    base = _base_url()
+    if not base:
         return None
 
     try:
-        # Send query
-        message = f"Question: {query}\n\nReply: "
-        socket_out.sendall(message.encode("utf-8"))
-
-        # Wait for response
-        socket_in.settimeout(10.0)  # 10 second timeout
-        response = socket_in.recv(4096).decode("utf-8")
-
-        # Clean up response
-        response = response.strip()
-        if not response:
+        resp = requests.post(
+            f"{base}/question",
+            json={"question": query},
+            timeout=10,
+        )
+        if resp.status_code >= 400:
             return None
-
-        return response
-    except socket.timeout:
+        data = resp.json()
+        seq = data.get("sequence")
+        if not isinstance(seq, int):
+            return None
+    except Exception as exc:
+        print(f"Error posting question: {exc}")
         return None
-    except Exception as e:
-        print(f"Error communicating with Admes server: {e}")
-        return None
 
-
-def close_server():
-    """Close the Admes server"""
-    global server_socket, socket_in, socket_out, clients
-
-    # Close all client connections
-    for client in clients[:]:
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
         try:
-            client.close()
-        except:
-            pass
-    clients.clear()
+            ans_resp = requests.get(f"{base}/answer", timeout=10)
+            if ans_resp.status_code >= 400:
+                time.sleep(1)
+                continue
+            ans_data = ans_resp.json()
+            if ans_data.get("sequence") == seq:
+                answer = ans_data.get("answer")
+                if answer:
+                    return answer
+        except Exception:
+            time.sleep(1)
+            continue
 
-    # Close server socket
-    if server_socket:
-        try:
-            server_socket.close()
-        except:
-            pass
-        server_socket = None
+        time.sleep(1)
 
-    socket_in = None
-    socket_out = None
+    return None
+
+
+def close_server() -> None:
+    """No-op: nothing to close on the client side."""
+    return
+
+
+def get_tunnel_url() -> Optional[str]:
+    return _base_url()
+
+
+def set_tunnel_url(url: str) -> None:
+    global tunnel_url
+    tunnel_url = url

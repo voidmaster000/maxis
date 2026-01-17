@@ -265,7 +265,7 @@ async def on_ready():
     )
     print(f"Invite link for Maxis: {invite_url}")
     print(f"Web server: http://localhost:{PORT}/")
-    print(f"Admes server: Port 12102")
+    print("Admes bridge: remote via tunnel (owner: /admes_tunnel to set URL)")
 
 
 # Import handlers

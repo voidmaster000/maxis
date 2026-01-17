@@ -50,6 +50,9 @@ CURRENCY_CHOICES = [
     app_commands.Choice(name=code, value=code) for code in CURRENCY_CODES
 ]
 
+# Owner-only checks (fallbacks to known owner ID if env is missing)
+OWNER_USER_ID = int(os.getenv("OWNER_USER_ID", "783667580106702848"))
+
 
 def _get_main():
     """Lazy import Main to avoid circular import when setting up slash commands."""
@@ -406,6 +409,44 @@ https://user783667580106702848.pepich.de/""",
             )
 
         await interaction.followup.send(embed=embed)
+
+    @bot.tree.command(
+        name="admes_tunnel",
+        description="Owner only: set or view the Admes tunnel URL",
+    )
+    @app_commands.describe(url="Optional: set a new tunnel base URL")
+    async def admes_tunnel(interaction: discord.Interaction, url: Optional[str] = None):
+        if interaction.user.id != OWNER_USER_ID:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="Unauthorized",
+                    description="This command is restricted to the bot owner.",
+                    color=get_random_color(),
+                ),
+                ephemeral=True,
+            )
+            return
+
+        from bot.admes_server import get_tunnel_url, set_tunnel_url
+
+        if url:
+            set_tunnel_url(url)
+            description = f"Tunnel URL set to: {url}"
+        else:
+            current = get_tunnel_url()
+            description = (
+                current
+                if current
+                else "Tunnel URL is not configured. Run /admes_tunnel <url> to set it."
+            )
+
+        embed = discord.Embed(
+            title="Admes tunnel URL",
+            description=description,
+            color=get_random_color(),
+        )
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @bot.tree.command(
         name="makefile",
