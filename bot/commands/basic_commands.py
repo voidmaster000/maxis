@@ -100,6 +100,13 @@ def setup_basic_commands(bot: commands.Bot):
     @app_commands.describe(
         category="The category to get help for (utility, moderation, economy)"
     )
+    @app_commands.choices(
+        category=[
+            app_commands.Choice(name="Utility", value="utility"),
+            app_commands.Choice(name="Moderation", value="moderation"),
+            app_commands.Choice(name="Economy", value="economy"),
+        ]
+    )
     async def help(interaction: discord.Interaction, category: Optional[str] = None):
         try:
             with open(resource_path("commands.json"), "r") as f:
@@ -514,6 +521,8 @@ https://user783667580106702848.pepich.de/""",
             app_commands.Choice(name="subtract", value="-"),
             app_commands.Choice(name="multiply", value="*"),
             app_commands.Choice(name="divide", value="/"),
+            app_commands.Choice(name="modulus", value="%"),
+            app_commands.Choice(name="exponent", value="^"),
         ]
     )
     async def calculate(
@@ -522,20 +531,34 @@ https://user783667580106702848.pepich.de/""",
         operation_symbol: str,
         number_2: float,
     ):
-        if operation_symbol == "+":
-            result = number_1 + number_2
-        elif operation_symbol == "-":
-            result = number_1 - number_2
-        elif operation_symbol == "*":
-            result = number_1 * number_2
-        elif operation_symbol == "/":
-            result = number_1 / number_2
-        else:
-            result = "Not a valid operation symbol."
+        try:
+            if operation_symbol == "+":
+                result = number_1 + number_2
+            elif operation_symbol == "-":
+                result = number_1 - number_2
+            elif operation_symbol == "*":
+                result = number_1 * number_2
+            elif operation_symbol == "/":
+                result = number_1 / number_2
+            elif operation_symbol == "%":
+                result = number_1 % number_2
+            elif operation_symbol == "^":
+                result = number_1 ** number_2
+            else:
+                result = "Not a valid operation symbol."
 
-        reply = f"{number_1} {operation_symbol} {number_2} = {result}"
-        embed = discord.Embed(title=reply, color=get_random_color())
-        await interaction.response.send_message(embed=embed)
+            reply = f"{number_1} {operation_symbol} {number_2} = {result}"
+            embed = discord.Embed(title=reply, color=get_random_color())
+            await interaction.response.send_message(embed=embed)
+        except Exception as e:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="Error!",
+                    description=f"An error occurred during calculation: {e}",
+                    color=get_random_color(),
+                ),
+                ephemeral=True,
+            )
 
     @bot.tree.command(name="reply", description="Set a custom reply")
     @app_commands.describe(
