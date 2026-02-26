@@ -5,11 +5,14 @@ Main bot file - Entry point for Maxis
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Dict
+from typing import Dict, Sequence
 from dotenv import load_dotenv
 
 import discord
+from discord.abc import Snowflake
+from discord.app_commands import Command, ContextMenu, Group
 from discord.ext import commands
+from discord.utils import MISSING
 from pymongo import MongoClient
 
 from bot.helper import custom_replies, balance_map, warn_map, get_random_color
@@ -47,8 +50,44 @@ intents.members = True
 # intents.direct_messages = True
 # intents.guild_bans = True
 
-# Create bot instance (no prefix needed since we're using slash commands only)
-bot = commands.Bot(command_prefix=">", intents=intents)
+
+# Custom CommandTree to handle global command registration
+class MaxisGlobalLinkTree(discord.app_commands.CommandTree):
+    """Custom CommandTree to handle global command registration"""
+
+    def add_command(
+        self,
+        command: Command | ContextMenu | Group,
+        /,
+        *,
+        guild: Snowflake | None = MISSING,
+        guilds: Sequence[Snowflake] = MISSING,
+        override: bool = False,
+    ) -> None:
+        # Add server, DM and Group DM support
+        command.allowed_installs = discord.app_commands.AppInstallationType(
+            guild=True,
+            user=True
+        )
+        command.allowed_contexts = discord.app_commands.AppCommandContext(
+            guild=True,
+            dm_channel=True,
+            private_channel=True
+        )
+        # Pass after modification to superclass add_command
+        super().add_command(command, guild=guild, guilds=guilds, override=override)
+
+
+# Custom Bot class to use MaxisGlobalLinkTree
+class MaxisBot(commands.Bot):
+    """Custom Bot class to use MaxisGlobalLinkTree"""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs, tree_cls=MaxisGlobalLinkTree)
+
+
+# Create bot instance (no prefix needed since we're using slash commands only yet add)
+bot = MaxisBot(command_prefix=">", intents=intents)
 
 
 # Make these accessible to other modules
