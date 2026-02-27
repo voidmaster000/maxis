@@ -66,13 +66,10 @@ class MaxisGlobalLinkTree(discord.app_commands.CommandTree):
     ) -> None:
         # Add server, DM and Group DM support
         command.allowed_installs = discord.app_commands.AppInstallationType(
-            guild=True,
-            user=True
+            guild=True, user=True
         )
         command.allowed_contexts = discord.app_commands.AppCommandContext(
-            guild=True,
-            dm_channel=True,
-            private_channel=True
+            guild=True, dm_channel=True, private_channel=True
         )
         # Pass after modification to superclass add_command
         super().add_command(command, guild=guild, guilds=guilds, override=override)

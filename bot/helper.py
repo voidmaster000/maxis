@@ -119,12 +119,16 @@ def solve_expression(expr: str) -> ExpressionResult:
     try:
         # Check for invalid characters
         if not all(c.isdigit() or c in "+-*/%^(). " for c in expr):
-            return ExpressionResult(success=False, error="Invalid characters in expression")
-        
+            return ExpressionResult(
+                success=False, error="Invalid characters in expression"
+            )
+
         # Check for mismatched parentheses
         if expr.count("(") != expr.count(")"):
-            return ExpressionResult(success=False, error="Mismatched parentheses in expression")
-    
+            return ExpressionResult(
+                success=False, error="Mismatched parentheses in expression"
+            )
+
         # P in PEMDAS
         if expr.count("(") > 0:
             # We will check for valid opening and closing parentheses then recursively pass smaller expression
@@ -139,16 +143,22 @@ def solve_expression(expr: str) -> ExpressionResult:
             return solve_expression(expr)
         else:
             # A no-parentheses end portion
-            expr = expr.replace(" ", "") # Sanitise spaces
+            expr = expr.replace(" ", "")  # Sanitise spaces
             operators: list[str] = [c for c in expr if c in "+-*/%^"]
             # A robust regular expression for finding floats and integers
             # Pattern explanation:
             # \d*\.\d+|\d+\.? : matches numbers with or without decimals
-            operands: list[float] = [float(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)]
+            operands: list[float] = [
+                float(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)
+            ]
             if len(operators) + 1 != len(operands):
-                return ExpressionResult(success=False, error="Invalid expression format")
-            if (len(operators) == 0 and len(operands) == 1):
-                return ExpressionResult(success=True, result=operands[0]) # Single number expression
+                return ExpressionResult(
+                    success=False, error="Invalid expression format"
+                )
+            if len(operators) == 0 and len(operands) == 1:
+                return ExpressionResult(
+                    success=True, result=operands[0]
+                )  # Single number expression
             # EMD in PEMDAS
             i = 0
             while i < len(operators):
@@ -170,9 +180,11 @@ def solve_expression(expr: str) -> ExpressionResult:
                     operands.pop(i + 1)
                     operators.pop(i)
                 else:
-                    i += 1 # No increment when pop because in-place shift, increment when skip
-            if (len(operators) == 0 and len(operands) == 1):
-                return ExpressionResult(success=True, result=operands[0]) # Single number expression after EMD
+                    i += 1  # No increment when pop because in-place shift, increment when skip
+            if len(operators) == 0 and len(operands) == 1:
+                return ExpressionResult(
+                    success=True, result=operands[0]
+                )  # Single number expression after EMD
             # AS in PEMDAS
             i = 0
             while i < len(operators):
@@ -186,7 +198,7 @@ def solve_expression(expr: str) -> ExpressionResult:
                     operands.pop(i + 1)
                     operators.pop(i)
                 else:
-                    i += 1 # No increment when pop because in-place shift, increment when skip
+                    i += 1  # No increment when pop because in-place shift, increment when skip
             return ExpressionResult(success=True, result=operands[0])
     except Exception as e:
         return ExpressionResult(success=False, error=str(e))
@@ -202,7 +214,9 @@ def _get_top_parentheses_groups(expr: str) -> list[str]:
         elif char == ")" and stack:
             start = stack.pop()
             if not stack:  # Only consider top-level groups
-                groups.append(expr[(start + 1) : i]) # Remove parentheses from group (exclusive selection)
+                groups.append(
+                    expr[(start + 1) : i]
+                )  # Remove parentheses from group (exclusive selection)
     return groups
 
 

@@ -509,9 +509,7 @@ https://user783667580106702848.pepich.de/""",
             )
 
     @bot.tree.command(name="calculate", description="Solve a mathematical expression")
-    @app_commands.describe(
-        expression="The expression to solve (brackets supported)"
-    )
+    @app_commands.describe(expression="The expression to solve (brackets supported)")
     async def calculate(
         interaction: discord.Interaction,
         expression: str,

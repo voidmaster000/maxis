@@ -28,7 +28,9 @@ def init_admes_server(port: int = 0) -> None:
     if _base_url():
         print(f"Admes remote endpoint configured at {_base_url()}")
     else:
-        print("Admes remote endpoint is not configured (owner: run /admes_tunnel to set it)")
+        print(
+            "Admes remote endpoint is not configured (owner: run /admes_tunnel to set it)"
+        )
 
 
 def send_query(query: str, timeout: float = ANSWER_TIMEOUT_SECONDS) -> Optional[str]:
