@@ -19,6 +19,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 from bot.helper import (
     get_random_color,
+    solve_expression,
     VERSION,
     custom_replies,
     refresh_replies,
@@ -507,54 +508,27 @@ https://user783667580106702848.pepich.de/""",
                 ephemeral=True,
             )
 
-    @bot.tree.command(
-        name="calculate", description="Performs calculations on two numbers"
-    )
+    @bot.tree.command(name="calculate", description="Solve a mathematical expression")
     @app_commands.describe(
-        number_1="The number 1 of the problem",
-        operation_symbol="The operation type to perform",
-        number_2="The number 2 of the problem",
-    )
-    @app_commands.choices(
-        operation_symbol=[
-            app_commands.Choice(name="add", value="+"),
-            app_commands.Choice(name="subtract", value="-"),
-            app_commands.Choice(name="multiply", value="*"),
-            app_commands.Choice(name="divide", value="/"),
-            app_commands.Choice(name="modulus", value="%"),
-            app_commands.Choice(name="exponent", value="^"),
-        ]
+        expression="The expression to solve (brackets supported)"
     )
     async def calculate(
         interaction: discord.Interaction,
-        number_1: float,
-        operation_symbol: str,
-        number_2: float,
+        expression: str,
     ):
-        try:
-            if operation_symbol == "+":
-                result = number_1 + number_2
-            elif operation_symbol == "-":
-                result = number_1 - number_2
-            elif operation_symbol == "*":
-                result = number_1 * number_2
-            elif operation_symbol == "/":
-                result = number_1 / number_2
-            elif operation_symbol == "%":
-                result = number_1 % number_2
-            elif operation_symbol == "^":
-                result = number_1 ** number_2
-            else:
-                result = "Not a valid operation symbol."
-
-            reply = f"{number_1} {operation_symbol} {number_2} = {result}"
-            embed = discord.Embed(title=reply, color=get_random_color())
+        result = solve_expression(expression)
+        if result.success:
+            embed = discord.Embed(
+                title="Success!",
+                description=f"The result of `{expression}` is `{result.result}`.",
+                color=get_random_color(),
+            )
             await interaction.response.send_message(embed=embed)
-        except Exception as e:
+        else:
             await interaction.response.send_message(
                 embed=discord.Embed(
                     title="Error!",
-                    description=f"An error occurred during calculation: {e}",
+                    description=f"Failed to calculate `{expression}`: {result.error}",
                     color=get_random_color(),
                 ),
                 ephemeral=True,

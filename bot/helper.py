@@ -3,6 +3,7 @@ Helper utility functions for Maxis
 """
 
 import random
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -50,6 +51,13 @@ class RpsResult(Enum):
     USER_WIN = "user_win"
     TIE = "tie"
     ERROR = "error"
+
+
+class ExpressionResult:
+    def __init__(self, success: bool, result: float = 0, error: str = ""):
+        self.success = success
+        self.result = result
+        self.error = error
 
 
 def get_random_color() -> discord.Colour:
@@ -104,6 +112,98 @@ def get_random_integer(max_inclusive: int, min_inclusive: int) -> int:
         return 0
     val = random.randint(min_inclusive, max_inclusive)
     return val
+
+
+def solve_expression(expr: str) -> ExpressionResult:
+    """Evaluate a mathematical expression"""
+    try:
+        # Check for invalid characters
+        if not all(c.isdigit() or c in "+-*/%^(). " for c in expr):
+            return ExpressionResult(success=False, error="Invalid characters in expression")
+        
+        # Check for mismatched parentheses
+        if expr.count("(") != expr.count(")"):
+            return ExpressionResult(success=False, error="Mismatched parentheses in expression")
+    
+        # P in PEMDAS
+        if expr.count("(") > 0:
+            # We will check for valid opening and closing parentheses then recursively pass smaller expression
+            parentheses_groups = _get_top_parentheses_groups(expr)
+            for group in parentheses_groups:
+                group_result = solve_expression(group)
+                if not group_result.success:
+                    return group_result
+                # Replace the parentheses group with its result in the original expression
+                expr = expr.replace(f"({group})", str(group_result.result), 1)
+            # A no-parentheses combinational sub-end portion
+            return solve_expression(expr)
+        else:
+            # A no-parentheses end portion
+            expr = expr.replace(" ", "") # Sanitise spaces
+            operators: list[str] = [c for c in expr if c in "+-*/%^"]
+            # A robust regular expression for finding floats and integers
+            # Pattern explanation:
+            # \d*\.\d+|\d+\.? : matches numbers with or without decimals
+            operands: list[float] = [float(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)]
+            if len(operators) + 1 != len(operands):
+                return ExpressionResult(success=False, error="Invalid expression format")
+            if (len(operators) == 0 and len(operands) == 1):
+                return ExpressionResult(success=True, result=operands[0]) # Single number expression
+            # EMD in PEMDAS
+            i = 0
+            while i < len(operators):
+                op = operators[i]
+                if op == "*":
+                    operands[i] = operands[i] * operands[i + 1]
+                    operands.pop(i + 1)
+                    operators.pop(i)
+                elif op == "/":
+                    operands[i] = operands[i] / operands[i + 1]
+                    operands.pop(i + 1)
+                    operators.pop(i)
+                elif op == "%":
+                    operands[i] = operands[i] % operands[i + 1]
+                    operands.pop(i + 1)
+                    operators.pop(i)
+                elif op == "^":
+                    operands[i] = operands[i] ** operands[i + 1]
+                    operands.pop(i + 1)
+                    operators.pop(i)
+                else:
+                    i += 1 # No increment when pop because in-place shift, increment when skip
+            if (len(operators) == 0 and len(operands) == 1):
+                return ExpressionResult(success=True, result=operands[0]) # Single number expression after EMD
+            # AS in PEMDAS
+            i = 0
+            while i < len(operators):
+                op = operators[i]
+                if op == "+":
+                    operands[i] = operands[i] + operands[i + 1]
+                    operands.pop(i + 1)
+                    operators.pop(i)
+                elif op == "-":
+                    operands[i] = operands[i] - operands[i + 1]
+                    operands.pop(i + 1)
+                    operators.pop(i)
+                else:
+                    i += 1 # No increment when pop because in-place shift, increment when skip
+            return ExpressionResult(success=True, result=operands[0])
+    except Exception as e:
+        return ExpressionResult(success=False, error=str(e))
+
+
+def _get_top_parentheses_groups(expr: str) -> list[str]:
+    """Get top-level parentheses groups in an expression"""
+    groups: list[str] = []
+    stack: list[int] = []
+    for i, char in enumerate(expr):
+        if char == "(":
+            stack.append(i)
+        elif char == ")" and stack:
+            start = stack.pop()
+            if not stack:  # Only consider top-level groups
+                groups.append(expr[(start + 1) : i]) # Remove parentheses from group (exclusive selection)
+    return groups
 
 
 def get_random_work() -> str:

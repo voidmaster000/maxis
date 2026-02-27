@@ -41,8 +41,8 @@
       "desc": "Creates file from text and returns it."
     },
     {
-      "name": "/calculate (number_1) (operation_symbol) (number_2)",
-      "desc": "Does calculation. Supported signs -> +, -, *, /."
+      "name": "/calculate (expression)",
+      "desc": "Solves a mathematical expression (brackets supported). Supported operations -> +, -, *, /, %, ^."
     },
     {
       "name": "/reply (text) (reply)",
