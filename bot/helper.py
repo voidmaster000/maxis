@@ -5,6 +5,7 @@ Helper utility functions for Maxis
 import random
 import re
 from datetime import datetime
+from decimal import Decimal, getcontext
 from pathlib import Path
 from typing import Dict
 from enum import Enum
@@ -14,6 +15,9 @@ import pymongo
 
 from bot.objects.user_settings import UserSettings
 from bot.objects.warn import Warn
+
+# Set decimal precision for expression evaluation
+getcontext().prec = 50
 
 # Constants
 VERSION = "5.0.0"
@@ -54,7 +58,7 @@ class RpsResult(Enum):
 
 
 class ExpressionResult:
-    def __init__(self, success: bool, result: float = 0, error: str = ""):
+    def __init__(self, success: bool, result: Decimal = Decimal("0"), error: str = ""):
         self.success = success
         self.result = result
         self.error = error
@@ -145,11 +149,11 @@ def solve_expression(expr: str) -> ExpressionResult:
             # A no-parentheses end portion
             expr = expr.replace(" ", "")  # Sanitise spaces
             operators: list[str] = [c for c in expr if c in "+-*/%^"]
-            # A robust regular expression for finding floats and integers
+            # A robust regular expression for finding decimals and integers
             # Pattern explanation:
             # \d*\.\d+|\d+\.? : matches numbers with or without decimals
-            operands: list[float] = [
-                float(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)
+            operands: list[Decimal] = [
+                Decimal(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)
             ]
 
             # Handle leading negative numbers and negative numbers after operators
