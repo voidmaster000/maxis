@@ -151,6 +151,20 @@ def solve_expression(expr: str) -> ExpressionResult:
             operands: list[float] = [
                 float(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)
             ]
+            # Handle leading negative numbers and negative numbers after operators
+            for i, op in enumerate(operators):
+                if op == "-":
+                    if i == 0:
+                        operands[i] = -operands[i]  # Handle first/lone leading negative
+                    else:
+                        nthMinus = operators[:i].count("-")
+                        allMinusIndexes = [i for i, c in enumerate(expr) if c == "-"]
+                        indexOfThisMinus = allMinusIndexes[nthMinus]
+                        if (
+                            indexOfThisMinus > 0
+                            and expr[indexOfThisMinus - 1] in "+-*/%^"
+                        ):
+                            operands[i] = -operands[i]  # Handle negative after operator
             if len(operators) + 1 != len(operands):
                 return ExpressionResult(
                     success=False, error="Invalid expression format"
