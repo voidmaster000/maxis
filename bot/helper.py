@@ -154,19 +154,22 @@ def solve_expression(expr: str) -> ExpressionResult:
 
             # Handle leading negative numbers and negative numbers after operators
             i = 0
+            sampledExprForRealtimeUpdates = expr
             while i < len(operators):
                 op = operators[i]
                 if op == "-":
                     nthMinus = operators[:i].count("-")
-                    allMinusIndexes = [i for i, c in enumerate(expr) if c == "-"]
+                    allMinusIndexes = [i for i, c in enumerate(sampledExprForRealtimeUpdates) if c == "-"]
                     indexOfThisMinus = allMinusIndexes[nthMinus]
-                    if indexOfThisMinus > 0 and expr[indexOfThisMinus - 1] in "+-*/%^":
+                    if indexOfThisMinus > 0 and sampledExprForRealtimeUpdates[indexOfThisMinus - 1] in "+-*/%^":
                         operands[i] = -operands[i]  # Handle negative after operator
                         operators.pop(i)  # Remove negative for the number
+                        sampledExprForRealtimeUpdates = sampledExprForRealtimeUpdates[:indexOfThisMinus] + sampledExprForRealtimeUpdates[indexOfThisMinus + 1:]  # Remove the minus from the sampled expression for accurate indexing
                         # No increment when pop because in-place shift
                     elif indexOfThisMinus == 0:
                         operands[i] = -operands[i]  # Handle first/lone leading negative
                         operators.pop(i)  # Remove negative for the number
+                        sampledExprForRealtimeUpdates = sampledExprForRealtimeUpdates[1:]  # Remove the minus from the sampled expression for accurate indexing
                         # No increment when pop because in-place shift
                     else:
                         i += 1  # Normal subtraction operator, move to next
@@ -241,7 +244,7 @@ def _get_top_parentheses_groups(expr: str) -> list[str]:
             start = stack.pop()
             if not stack:  # Only consider top-level groups
                 groups.append(
-                    expr[(start + 1) : i]
+                    expr[(start + 1):i]
                 )  # Remove parentheses from group (exclusive selection)
     return groups
 
