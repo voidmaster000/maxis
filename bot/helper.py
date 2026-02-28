@@ -151,20 +151,28 @@ def solve_expression(expr: str) -> ExpressionResult:
             operands: list[float] = [
                 float(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)
             ]
+
             # Handle leading negative numbers and negative numbers after operators
-            for i, op in enumerate(operators):
+            i = 0
+            while i < len(operators):
+                op = operators[i]
                 if op == "-":
-                    if i == 0:
+                    nthMinus = operators[:i].count("-")
+                    allMinusIndexes = [i for i, c in enumerate(expr) if c == "-"]
+                    indexOfThisMinus = allMinusIndexes[nthMinus]
+                    if indexOfThisMinus > 0 and expr[indexOfThisMinus - 1] in "+-*/%^":
+                        operands[i] = -operands[i]  # Handle negative after operator
+                        operators.pop(i)  # Remove negative for the number
+                        # No increment when pop because in-place shift
+                    elif indexOfThisMinus == 0:
                         operands[i] = -operands[i]  # Handle first/lone leading negative
+                        operators.pop(i)  # Remove negative for the number
+                        # No increment when pop because in-place shift
                     else:
-                        nthMinus = operators[:i].count("-")
-                        allMinusIndexes = [i for i, c in enumerate(expr) if c == "-"]
-                        indexOfThisMinus = allMinusIndexes[nthMinus]
-                        if (
-                            indexOfThisMinus > 0
-                            and expr[indexOfThisMinus - 1] in "+-*/%^"
-                        ):
-                            operands[i] = -operands[i]  # Handle negative after operator
+                        i += 1  # Normal subtraction operator, move to next
+                else:
+                    i += 1  # Not a minus operator, move to next
+
             if len(operators) + 1 != len(operands):
                 return ExpressionResult(
                     success=False, error="Invalid expression format"
@@ -173,6 +181,7 @@ def solve_expression(expr: str) -> ExpressionResult:
                 return ExpressionResult(
                     success=True, result=operands[0]
                 )  # Single number expression
+
             # EMD in PEMDAS
             i = 0
             while i < len(operators):
@@ -195,10 +204,12 @@ def solve_expression(expr: str) -> ExpressionResult:
                     operators.pop(i)
                 else:
                     i += 1  # No increment when pop because in-place shift, increment when skip
+
             if len(operators) == 0 and len(operands) == 1:
                 return ExpressionResult(
                     success=True, result=operands[0]
                 )  # Single number expression after EMD
+
             # AS in PEMDAS
             i = 0
             while i < len(operators):
@@ -213,6 +224,7 @@ def solve_expression(expr: str) -> ExpressionResult:
                     operators.pop(i)
                 else:
                     i += 1  # No increment when pop because in-place shift, increment when skip
+
             return ExpressionResult(success=True, result=operands[0])
     except Exception as e:
         return ExpressionResult(success=False, error=str(e))
