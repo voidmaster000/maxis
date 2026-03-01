@@ -518,7 +518,7 @@ https://user783667580106702848.pepich.de/""",
         if result.success:
             embed = discord.Embed(
                 title="Success!",
-                description=f"The result of `{expression}` is `{result.result}`.",
+                description=f"The result of `{expression}` is `{result.result}`",
                 color=get_random_color(),
             )
             await interaction.response.send_message(embed=embed)
@@ -698,7 +698,7 @@ https://user783667580106702848.pepich.de/""",
 
         # Create image
         try:
-            font = ImageFont.truetype("arial.ttf", 48)
+            font = ImageFont.truetype(resource_path("Inter-SemiBold.ttf"), 48)
         except:
             font = ImageFont.load_default()
 
