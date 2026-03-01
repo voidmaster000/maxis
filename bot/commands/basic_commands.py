@@ -710,9 +710,9 @@ https://user783667580106702848.pepich.de/""",
         height = int(bbox[3] - bbox[1])
 
         # Create final image
-        img = Image.new("RGB", (width + 20, height + 20), color="black")
+        img = Image.new("RGB", (width + 25, height + 25), color="black")
         draw = ImageDraw.Draw(img)
-        draw.text((10, 10), text, font=font, fill="white")
+        draw.text((5, 5), text, font=font, fill="white")
 
         # Convert to bytes
         buffer = BytesIO()
