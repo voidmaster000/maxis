@@ -965,9 +965,15 @@ https://user783667580106702848.pepich.de/""",
         except:
             font = ImageFont.load_default()
 
-        draw.text((10, 10), f"RGB: {red}, {green}, {blue}", fill="black", font=font)
+        draw.text((10, 8), f"RGB: {red}, {green}, {blue}", fill="black", font=font)
         hex_color = f"#{red:02X}{green:02X}{blue:02X}"
-        draw.text((10, 30), f"HEX: {hex_color}", fill="black", font=font)
+        draw.text((10, 28), f"HEX: {hex_color}", fill="black", font=font)
+
+        # Apply rounded corners to the image
+        rounded_mask = Image.new("L", (500, 500), 0)
+        rounded_draw = ImageDraw.Draw(rounded_mask)
+        rounded_draw.rounded_rectangle([0, 0, 500, 500], radius=50, fill=255)
+        img.putalpha(rounded_mask)
 
         # Convert to bytes
         buffer = BytesIO()
@@ -1008,9 +1014,15 @@ https://user783667580106702848.pepich.de/""",
         except:
             font = ImageFont.load_default()
 
-        draw.text((10, 10), f"RGB: {red}, {green}, {blue}", fill="black", font=font)
+        draw.text((10, 8), f"RGB: {red}, {green}, {blue}", fill="black", font=font)
         hex_color = f"#{red:02X}{green:02X}{blue:02X}"
-        draw.text((10, 30), f"HEX: {hex_color}", fill="black", font=font)
+        draw.text((10, 28), f"HEX: {hex_color}", fill="black", font=font)
+
+        # Apply rounded corners to the image
+        rounded_mask = Image.new("L", (500, 500), 0)
+        rounded_draw = ImageDraw.Draw(rounded_mask)
+        rounded_draw.rounded_rectangle([0, 0, 500, 500], radius=50, fill=255)
+        img.putalpha(rounded_mask)
 
         # Convert to bytes
         buffer = BytesIO()
