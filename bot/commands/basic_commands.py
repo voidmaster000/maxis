@@ -961,7 +961,7 @@ https://user783667580106702848.pepich.de/""",
 
         # Draw text
         try:
-            font = ImageFont.truetype("arial.ttf", 18)
+            font = ImageFont.truetype(resource_path("Inter-SemiBold.ttf"), 18)
         except:
             font = ImageFont.load_default()
 
@@ -1004,7 +1004,7 @@ https://user783667580106702848.pepich.de/""",
 
         # Draw text
         try:
-            font = ImageFont.truetype("arial.ttf", 18)
+            font = ImageFont.truetype(resource_path("Inter-SemiBold.ttf"), 18)
         except:
             font = ImageFont.load_default()
 
