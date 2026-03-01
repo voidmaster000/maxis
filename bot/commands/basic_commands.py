@@ -957,7 +957,7 @@ https://user783667580106702848.pepich.de/""",
         draw = ImageDraw.Draw(img)
 
         # Draw white rounded rectangle for text
-        draw.rounded_rectangle([0, 0, 200, 55], radius=50, fill="white")
+        draw.rounded_rectangle([0, 0, 200, 55], radius=55 // 2, fill="white")
 
         # Draw text
         try:
@@ -972,7 +972,7 @@ https://user783667580106702848.pepich.de/""",
         # Apply rounded corners to the image
         rounded_mask = Image.new("L", (500, 500), 0)
         rounded_draw = ImageDraw.Draw(rounded_mask)
-        rounded_draw.rounded_rectangle([0, 0, 500, 500], radius=50, fill=255)
+        rounded_draw.rounded_rectangle([0, 0, 500, 500], radius=55 // 2, fill=255)
         img.putalpha(rounded_mask)
 
         # Convert to bytes
@@ -1006,7 +1006,7 @@ https://user783667580106702848.pepich.de/""",
         draw = ImageDraw.Draw(img)
 
         # Draw white rounded rectangle for text
-        draw.rounded_rectangle([0, 0, 200, 55], radius=50, fill="white")
+        draw.rounded_rectangle([0, 0, 200, 55], radius=55 // 2, fill="white")
 
         # Draw text
         try:
@@ -1021,7 +1021,7 @@ https://user783667580106702848.pepich.de/""",
         # Apply rounded corners to the image
         rounded_mask = Image.new("L", (500, 500), 0)
         rounded_draw = ImageDraw.Draw(rounded_mask)
-        rounded_draw.rounded_rectangle([0, 0, 500, 500], radius=50, fill=255)
+        rounded_draw.rounded_rectangle([0, 0, 500, 500], radius=55 // 2, fill=255)
         img.putalpha(rounded_mask)
 
         # Convert to bytes
