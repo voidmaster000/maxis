@@ -74,13 +74,13 @@ class ComponentsListener:
                 return
 
             # Generate pattern question
-            question, answer = ComponentsListener._generate_pattern()
+            question, pattern, answer = ComponentsListener._generate_pattern()
 
             modal = discord.ui.Modal(title="What's the next number in the pattern?")
             modal.add_item(
                 discord.ui.TextInput(
                     label=question,
-                    placeholder="Enter the answer",
+                    placeholder=pattern,
                     custom_id="laptop_code_answer",
                     required=True,
                 )
@@ -106,10 +106,10 @@ class ComponentsListener:
             current += (pattern_multiplier * i) + pattern_adder
             pattern.append(current)
 
-        question = "n(i) = n(i - 1) + (i * m) + a, find n(10):\n" + ", ".join(map(str, pattern))
+        question = "n(i) = n(i - 1) + (i * m) + a, n(0) = 0, i = 1 to 9 given below, find n(10):"
         answer = current + (pattern_multiplier * 10) + pattern_adder
 
-        return question, answer
+        return question, ", ".join(map(str, pattern)), answer
 
     @staticmethod
     async def _handle_help_category(interaction: discord.Interaction):
