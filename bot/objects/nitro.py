@@ -6,12 +6,12 @@ from datetime import datetime, timedelta, timezone
 import discord
 
 
-async def use_nitro(event: discord.Message):
+async def use_nitro(interaction: discord.Interaction):
     """Use nitro item to reduce cooldowns"""
     from bot.main import Main
     from bot.helper import refresh_works, refresh_dailies
 
-    user_id = event.author.id
+    user_id = interaction.user.id
 
     # Reduce work cooldown
     if user_id in Main.user_worked_times:

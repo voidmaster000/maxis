@@ -2,27 +2,27 @@
 Hacker Laptop item functionality
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 import discord
 from bot.helper import get_random_color
 
 
-async def use_laptop(event: discord.Message):
+async def use_laptop(interaction: discord.Interaction):
     """Use hacker laptop item"""
-    user_id = event.author.id
+    user_id = interaction.user.id
 
     embed = discord.Embed(
-        title=f"{event.author.display_name}'s PC",
+        title=f"{interaction.user.display_name}'s PC",
         description="Press a button below to perform the desired action.",
         color=get_random_color(),
     )
     embed.add_field(name="OS", value="MaxisOS")
     embed.add_field(
         name="Time (UTC or GMT)",
-        value=datetime.utcnow().strftime("%d %B %Y %I:%M:%S %p").upper(),
+        value=datetime.now(timezone.utc).strftime("%d %B %Y %I:%M:%S %p").upper(),
     )
     embed.add_field(name="MaxisVPN Status", value="Connected")
-    embed.timestamp = datetime.utcnow()
+    embed.timestamp = datetime.now(timezone.utc)
 
     view = discord.ui.View()
     view.add_item(
@@ -40,4 +40,4 @@ async def use_laptop(event: discord.Message):
         )
     )
 
-    await event.channel.send(embed=embed, view=view)
+    await interaction.followup.send(embed=embed, view=view)

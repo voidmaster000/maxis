@@ -3,11 +3,13 @@ Shop and ShopItem classes for the economy system
 """
 
 import asyncio
-from typing import Dict, Optional, Callable
+from typing import Coroutine, Dict, Optional, Callable, TypeAlias, TypedDict
 import discord
 from bot.helper import get_random_color, debit_balance
 
 from bot.objects.user_settings import UserSettings
+
+UseFunc: TypeAlias = Callable[[discord.Interaction], Coroutine[None, None, None]]
 
 
 class ShopItem:
@@ -20,7 +22,7 @@ class ShopItem:
         emoji: str,
         cost: int,
         is_persistent: bool,
-        func_class: Optional[Callable] = None,
+        use_func: Optional[UseFunc] = None,
     ):
         self.name = name
         self.desc = desc
@@ -29,29 +31,28 @@ class ShopItem:
         self.emoji = emoji
         self.cost = cost
         self.is_persistent = is_persistent
-        self.func_class = func_class
-        self.is_functional = func_class is not None
+        self.use_func = use_func
+        self.is_functional = use_func is not None
 
     async def use_item(
         self,
         interaction: discord.Interaction,
-        owned_items: Dict[int, Dict[str, int]],
-        shop_refresh_func: Callable,
+        connstr: str,
     ):
         """Use an item from inventory"""
         user_id = interaction.user.id
-        if user_id in owned_items and self.name in owned_items[user_id]:
-            if owned_items[user_id][self.name] > 0:
-                owned = owned_items[user_id][self.name]
+        if user_id in Shop.owned_items and self.name in Shop.owned_items[user_id]:
+            if Shop.owned_items[user_id][self.name] > 0:
+                owned = Shop.owned_items[user_id][self.name]
                 if not self.is_persistent:
-                    owned_items[user_id][self.name] = owned - 1
+                    Shop.owned_items[user_id][self.name] = owned - 1
                     embed = discord.Embed(
                         title=f"{interaction.user.display_name} used {self.emoji} {self.name}",
                         description=f"{self.use_message}\nYou now have {owned - 1} {self.emoji} {self.name}(s).",
                         color=get_random_color(),
                     )
                     await interaction.response.send_message(embed=embed)
-                    shop_refresh_func()
+                    Shop.refresh_ownerships(connstr)
                 else:
                     embed = discord.Embed(
                         title=f"{interaction.user.display_name} used {self.emoji} {self.name}",
@@ -60,15 +61,9 @@ class ShopItem:
                     )
                     await interaction.response.send_message(embed=embed)
 
-                if self.is_functional and self.func_class:
-                    # Create a fake message-like object for compatibility
-                    class FakeMessage:
-                        def __init__(self, interaction):
-                            self.author = interaction.user
-                            self.channel = interaction.channel
-                            self.guild = interaction.guild
+                if self.is_functional and self.use_func:
+                    asyncio.create_task(self.use_func(interaction))
 
-                    asyncio.create_task(self.func_class(FakeMessage(interaction)))
                 return
 
         embed = discord.Embed(
@@ -81,19 +76,17 @@ class ShopItem:
     async def buy_item(
         self,
         interaction: discord.Interaction,
-        owned_items: Dict[int, Dict[str, int]],
         balance_map: Dict[int, int],
         user_settings_map: Dict[int, UserSettings],
-        settings: str,
-        shop_refresh_func: Callable,
+        connstr: str,
     ):
         """Buy an item from the shop"""
         try:
             user_id = interaction.user.id
-            if user_id not in owned_items:
-                owned_items[user_id] = {}
-            elif self.name in owned_items[user_id]:
-                if owned_items[user_id][self.name] > 0:
+            if user_id not in Shop.owned_items:
+                Shop.owned_items[user_id] = {}
+            elif self.name in Shop.owned_items[user_id]:
+                if Shop.owned_items[user_id][self.name] > 0:
                     embed = discord.Embed(
                         title="Error!",
                         description=f"You already own this item! Use it with ```/use {self.command}```.",
@@ -103,27 +96,27 @@ class ShopItem:
                     return
 
             if await debit_balance(
-                self.cost, interaction, settings, user_settings_map, balance_map
+                self.cost, interaction, connstr, user_settings_map, balance_map
             ):
-                if self.name in owned_items[user_id]:
-                    owned_items[user_id][self.name] += 1
+                if self.name in Shop.owned_items[user_id]:
+                    Shop.owned_items[user_id][self.name] += 1
                 else:
-                    owned_items[user_id][self.name] = 1
+                    Shop.owned_items[user_id][self.name] = 1
 
                 embed = discord.Embed(
                     title="Success!",
                     description=f"{interaction.user.display_name} purchased 1 {self.emoji} {self.name}.\n"
-                    f"Now you have {owned_items[user_id][self.name]} {self.emoji} {self.name}(s).",
+                    f"Now you have {Shop.owned_items[user_id][self.name]} {self.emoji} {self.name}(s).",
                     color=get_random_color(),
                 )
                 await interaction.response.send_message(embed=embed)
-                shop_refresh_func()
+                Shop.refresh_ownerships(connstr)
         except Exception as ex:
             print(f"Error buying item: {ex}")
 
 
 class Shop:
-    items = []
+    items: list[ShopItem] = []
     owned_items: Dict[int, Dict[str, int]] = {}
 
     @staticmethod
@@ -208,27 +201,39 @@ class Shop:
         return 0
 
     @staticmethod
-    def refresh_ownerships(settings: str):
+    def refresh_ownerships(connstr: str):
         """Refresh item ownerships in database"""
 
         def refresh():
             try:
                 from pymongo import MongoClient
 
-                client = MongoClient(settings)
+
+                class ItemDoc(TypedDict):
+                    name: str
+                    key: list[int]
+                    val: list[ItemDocValue]
+
+
+                class ItemDocValue(TypedDict):
+                    key: list[str]
+                    val: list[int]
+
+
+                client = MongoClient[ItemDoc](connstr)
                 db = client["UnknownDatabase"]
                 collection = db["UnknownCollection"]
 
-                docs = []
+                values: list[ItemDocValue] = []
                 for map_val in Shop.owned_items.values():
-                    docs.append(
+                    values.append(
                         {"key": list(map_val.keys()), "val": list(map_val.values())}
                     )
 
-                doc = {
+                doc: ItemDoc = {
                     "name": "item",
                     "key": list(Shop.owned_items.keys()),
-                    "val": docs,
+                    "val": values,
                 }
 
                 if collection.count_documents({"name": "item"}) > 0:

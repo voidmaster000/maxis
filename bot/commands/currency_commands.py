@@ -530,7 +530,7 @@ def setup_currency_commands(bot: commands.Bot):
             )
             return
 
-        users = []
+        users: list[tuple[discord.Member, int]] = []
         for member in interaction.guild.members:
             if not member.bot and member.id in Main.balance_map:
                 users.append((member, Main.balance_map[member.id]))
@@ -565,7 +565,7 @@ def setup_currency_commands(bot: commands.Bot):
     async def global_leaderboard(interaction: discord.Interaction):
         await interaction.response.defer()
 
-        users = []
+        users: list[tuple[discord.User, int]] = []
         for user_id, balance in Main.balance_map.items():
             try:
                 user = await bot.fetch_user(user_id)
@@ -599,7 +599,7 @@ def setup_currency_commands(bot: commands.Bot):
     )
     async def inv(interaction: discord.Interaction):
         user_id = interaction.user.id
-        item_text = []
+        item_text: list[str] = []
 
         if user_id in Shop.owned_items:
             user_items = Shop.owned_items[user_id]
@@ -607,7 +607,7 @@ def setup_currency_commands(bot: commands.Bot):
             for name, count in user_items.items():
                 if count > 0:
                     index += 1
-                    item_text.append(f"{index}) {name} (Count: {count})")
+                    item_text.append(f"{index}) {[shop_item for shop_item in Shop.items if shop_item.name == name][0].emoji} {name} (Count: {count})")
 
         if not item_text:
             item_text.append("There are no items in your inventory!")
@@ -675,11 +675,9 @@ def setup_currency_commands(bot: commands.Bot):
             if item_lower == shop_item.command.lower():
                 await shop_item.buy_item(
                     interaction,
-                    Shop.owned_items,
                     Main.balance_map,
                     Main.user_settings_map,
                     Main.CONNSTR,
-                    lambda: Shop.refresh_ownerships(Main.CONNSTR),
                 )
                 return
 
@@ -700,8 +698,7 @@ def setup_currency_commands(bot: commands.Bot):
             if item_lower == shop_item.command.lower():
                 await shop_item.use_item(
                     interaction,
-                    Shop.owned_items,
-                    lambda: Shop.refresh_ownerships(Main.CONNSTR),
+                    Main.CONNSTR,
                 )
                 return
 

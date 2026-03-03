@@ -100,7 +100,7 @@ class ComponentsListener:
         pattern_multiplier = random.randint(1, 3)
         pattern_adder = random.randint(1, 8)
         current = 1
-        pattern = []
+        pattern: list[int] = []
 
         for i in range(1, 10):
             current += (pattern_multiplier * i) + pattern_adder

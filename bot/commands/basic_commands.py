@@ -8,7 +8,7 @@ import os
 import random
 import requests
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, TypedDict
 from io import BytesIO
 
 import discord
@@ -32,12 +32,17 @@ from bot.helper import (
 from bot.objects.user_settings import UserSettings
 
 
-def _load_currency_codes():
+class Currency(TypedDict):
+    code: str
+    name: str
+
+
+def _load_currency_codes() -> list[str]:
     """Load currency codes from JSON for slash command choices."""
     try:
         currencies_path = resource_path("currencies.json")
         with open(currencies_path, "r") as f:
-            data = json.load(f)
+            data: dict[str, list[Currency]] = json.load(f)
         return [
             entry["code"] for entry in data.get("currencies", []) if "code" in entry
         ]
@@ -142,7 +147,7 @@ https://user783667580106702848.pepich.de/""",
                 )
 
                 view = View()
-                select = Select(
+                select: Select[View] = Select(
                     placeholder="Choose a category...",
                     custom_id="help_category",
                     options=[
@@ -498,7 +503,7 @@ https://user783667580106702848.pepich.de/""",
 
             # Clean up
             os.remove(filename)
-        except Exception as e:
+        except Exception:
             await interaction.response.send_message(
                 embed=discord.Embed(
                     title="Error!",
@@ -820,7 +825,7 @@ https://user783667580106702848.pepich.de/""",
         await interaction.response.send_message(embed=embed)
 
     # Load currencies for autocomplete
-    def load_currencies():
+    def load_currencies() -> list[Currency]:
         """Load currency list from JSON file"""
         try:
             currencies_path = resource_path("currencies.json")
@@ -847,7 +852,7 @@ https://user783667580106702848.pepich.de/""",
 
         # Validate currencies against the fixed list
         valid_codes = CURRENCY_CODES or [
-            c.get("code") for c in load_currencies() if "code" in c
+            c["code"] for c in load_currencies() if "code" in c
         ]
         if not valid_codes:
             await interaction.followup.send(

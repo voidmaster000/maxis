@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 from decimal import Decimal, getcontext
 from pathlib import Path
-from typing import Dict
+from typing import Dict, TypedDict
 from enum import Enum
 
 import discord
@@ -258,16 +258,24 @@ def get_random_work() -> str:
     return random.choice(WORKS)
 
 
-def refresh_replies(settings: str):
+def refresh_replies(connstr: str):
     """Refresh custom replies in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class ReplyDoc(TypedDict):
+                name: str
+                key: list[str]
+                val: list[str]
+
+
+            client = pymongo.MongoClient[ReplyDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
-            doc = {
+            doc: ReplyDoc = {
                 "name": "reply",
                 "key": list(custom_replies.keys()),
                 "val": list(custom_replies.values()),
@@ -286,16 +294,29 @@ def refresh_replies(settings: str):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_user_settings(settings: str, user_settings_map: Dict[int, UserSettings]):
+def refresh_user_settings(connstr: str, user_settings_map: Dict[int, UserSettings]):
     """Refresh user settings in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class UserSettingsDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[UserSettingsDocValue]
+
+
+            class UserSettingsDocValue(TypedDict):
+                dm: bool
+                passive: bool
+
+
+            client = pymongo.MongoClient[UserSettingsDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
-            settings_list = []
+            settings_list: list[UserSettingsDocValue] = []
             for user_settings in user_settings_map.values():
                 settings_list.append(
                     {
@@ -304,7 +325,7 @@ def refresh_user_settings(settings: str, user_settings_map: Dict[int, UserSettin
                     }
                 )
 
-            doc = {
+            doc: UserSettingsDoc = {
                 "name": "usersettings",
                 "key": list(user_settings_map.keys()),
                 "val": settings_list,
@@ -323,16 +344,24 @@ def refresh_user_settings(settings: str, user_settings_map: Dict[int, UserSettin
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_balances(settings: str):
+def refresh_balances(connstr: str):
     """Refresh balances in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class BalanceDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[int]
+
+
+            client = pymongo.MongoClient[BalanceDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
-            doc = {
+            doc: BalanceDoc = {
                 "name": "balance",
                 "key": list(balance_map.keys()),
                 "val": list(balance_map.values()),
@@ -351,17 +380,25 @@ def refresh_balances(settings: str):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_works(settings: str, user_worked_times: Dict[int, datetime]):
+def refresh_works(connstr: str, user_worked_times: Dict[int, datetime]):
     """Refresh work times in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class WorkDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[datetime]
+
+
+            client = pymongo.MongoClient[WorkDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_worked_times.values()]
-            doc = {"name": "work", "key": list(user_worked_times.keys()), "val": dates}
+            doc: WorkDoc = {"name": "work", "key": list(user_worked_times.keys()), "val": dates}
 
             if collection.count_documents({"name": "work"}) > 0:
                 collection.replace_one({"name": "work"}, doc)
@@ -376,17 +413,25 @@ def refresh_works(settings: str, user_worked_times: Dict[int, datetime]):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_robs(settings: str, user_robbed_times: Dict[int, datetime]):
+def refresh_robs(connstr: str, user_robbed_times: Dict[int, datetime]):
     """Refresh rob times in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class RobDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[datetime]
+
+
+            client = pymongo.MongoClient[RobDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_robbed_times.values()]
-            doc = {"name": "rob", "key": list(user_robbed_times.keys()), "val": dates}
+            doc: RobDoc = {"name": "rob", "key": list(user_robbed_times.keys()), "val": dates}
 
             if collection.count_documents({"name": "rob"}) > 0:
                 collection.replace_one({"name": "rob"}, doc)
@@ -401,17 +446,25 @@ def refresh_robs(settings: str, user_robbed_times: Dict[int, datetime]):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_dailies(settings: str, user_daily_times: Dict[int, datetime]):
+def refresh_dailies(connstr: str, user_daily_times: Dict[int, datetime]):
     """Refresh daily times in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class DailyDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[datetime]
+
+
+            client = pymongo.MongoClient[DailyDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_daily_times.values()]
-            doc = {"name": "daily", "key": list(user_daily_times.keys()), "val": dates}
+            doc: DailyDoc = {"name": "daily", "key": list(user_daily_times.keys()), "val": dates}
 
             if collection.count_documents({"name": "daily"}) > 0:
                 collection.replace_one({"name": "daily"}, doc)
@@ -426,17 +479,25 @@ def refresh_dailies(settings: str, user_daily_times: Dict[int, datetime]):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_weeklies(settings: str, user_weekly_times: Dict[int, datetime]):
+def refresh_weeklies(connstr: str, user_weekly_times: Dict[int, datetime]):
     """Refresh weekly times in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class WeeklyDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[datetime]
+
+
+            client = pymongo.MongoClient[WeeklyDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_weekly_times.values()]
-            doc = {
+            doc: WeeklyDoc = {
                 "name": "weekly",
                 "key": list(user_weekly_times.keys()),
                 "val": dates,
@@ -455,17 +516,25 @@ def refresh_weeklies(settings: str, user_weekly_times: Dict[int, datetime]):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_monthlies(settings: str, user_monthly_times: Dict[int, datetime]):
+def refresh_monthlies(connstr: str, user_monthly_times: Dict[int, datetime]):
     """Refresh monthly times in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class MonthlyDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[datetime]
+
+
+            client = pymongo.MongoClient[MonthlyDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_monthly_times.values()]
-            doc = {
+            doc: MonthlyDoc = {
                 "name": "monthly",
                 "key": list(user_monthly_times.keys()),
                 "val": dates,
@@ -484,18 +553,37 @@ def refresh_monthlies(settings: str, user_monthly_times: Dict[int, datetime]):
     threading.Thread(target=refresh, daemon=True).start()
 
 
-def refresh_warns(settings: str):
+def refresh_warns(connstr: str):
     """Refresh warns in database"""
 
     def refresh():
         try:
-            client = pymongo.MongoClient(settings)
+
+
+            class WarnDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[WarnDocValue]
+
+
+            class WarnDocValue(TypedDict):
+                key: list[int]
+                val: list[WarnDocValueValue]
+
+
+            class WarnDocValueValue(TypedDict):
+                id: int
+                warns: int
+                causes: list[str]
+
+
+            client = pymongo.MongoClient[WarnDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
-            docs = []
+            values: list[WarnDocValue] = []
             for map_val in warn_map.values():
-                warns = []
+                warns: list[WarnDocValueValue] = []
                 for warn in map_val.values():
                     warns.append(
                         {
@@ -504,9 +592,9 @@ def refresh_warns(settings: str):
                             "causes": warn.warn_causes,
                         }
                     )
-                docs.append({"key": list(map_val.keys()), "val": warns})
+                values.append({"key": list(map_val.keys()), "val": warns})
 
-            doc = {"name": "warn", "key": list(warn_map.keys()), "val": docs}
+            doc: WarnDoc = {"name": "warn", "key": list(warn_map.keys()), "val": values}
 
             if collection.count_documents({"name": "warn"}) > 0:
                 collection.replace_one({"name": "warn"}, doc)
@@ -524,14 +612,14 @@ def refresh_warns(settings: str):
 async def credit_balance(
     credit_amount: int,
     interaction: discord.Interaction,
-    settings: str,
+    connstr: str,
     user_settings_map: Dict[int, UserSettings],
     balance_map: Dict[int, int],
 ) -> bool:
     """Credit balance to user's account"""
     if interaction.user.id not in balance_map:
         balance_map[interaction.user.id] = 0
-        refresh_balances(settings)
+        refresh_balances(connstr)
 
     old_bal = balance_map[interaction.user.id]
     if credit_amount > 0:
@@ -554,7 +642,7 @@ async def credit_balance(
             except Exception as e:
                 print(f"Error sending DM: {e}")
 
-        refresh_balances(settings)
+        refresh_balances(connstr)
         return True
     else:
         embed = discord.Embed(
@@ -570,14 +658,14 @@ async def credit_balance_for_different_user(
     credit_amount: int,
     user: discord.User,
     interaction: discord.Interaction,
-    settings: str,
+    connstr: str,
     user_settings_map: Dict[int, UserSettings],
     balance_map: Dict[int, int],
 ) -> bool:
     """Credit balance to user's account"""
     if user.id not in balance_map:
         balance_map[user.id] = 0
-        refresh_balances(settings)
+        refresh_balances(connstr)
 
     old_bal = balance_map[user.id]
     if credit_amount > 0:
@@ -597,7 +685,7 @@ async def credit_balance_for_different_user(
             except Exception as e:
                 print(f"Error sending DM: {e}")
 
-        refresh_balances(settings)
+        refresh_balances(connstr)
         return True
     else:
         embed = discord.Embed(
@@ -612,14 +700,14 @@ async def credit_balance_for_different_user(
 async def debit_balance(
     debit_amount: int,
     interaction: discord.Interaction,
-    settings: str,
+    connstr: str,
     user_settings_map: Dict[int, UserSettings],
     balance_map: Dict[int, int],
 ) -> bool:
     """Debit balance from user's account"""
     if interaction.user.id not in balance_map:
         balance_map[interaction.user.id] = 0
-        refresh_balances(settings)
+        refresh_balances(connstr)
 
     old_bal = balance_map[interaction.user.id]
     if debit_amount > 0:
@@ -643,7 +731,7 @@ async def debit_balance(
                 except Exception as e:
                     print(f"Error sending DM: {e}")
 
-            refresh_balances(settings)
+            refresh_balances(connstr)
             return True
         elif old_bal == 0:
             embed = discord.Embed(
@@ -673,14 +761,14 @@ async def debit_balance_for_different_user(
     debit_amount: int,
     user: discord.User,
     interaction: discord.Interaction,
-    settings: str,
+    connstr: str,
     user_settings_map: Dict[int, UserSettings],
     balance_map: Dict[int, int],
 ) -> bool:
     """Debit balance from user's account"""
     if user.id not in balance_map:
         balance_map[user.id] = 0
-        refresh_balances(settings)
+        refresh_balances(connstr)
 
     old_bal = balance_map[user.id]
     if debit_amount > 0:
@@ -704,7 +792,7 @@ async def debit_balance_for_different_user(
                 except Exception as e:
                     print(f"Error sending DM: {e}")
 
-            refresh_balances(settings)
+            refresh_balances(connstr)
             return True
         elif old_bal == 0:
             embed = discord.Embed(

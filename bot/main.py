@@ -5,7 +5,7 @@ Main bot file - Entry point for Maxis
 import os
 import sys
 from datetime import datetime, timezone
-from typing import Dict, Sequence
+from typing import Any, Dict, Sequence, TypedDict
 from dotenv import load_dotenv
 
 import discord
@@ -57,7 +57,7 @@ class MaxisGlobalLinkTree(discord.app_commands.CommandTree):
 
     def add_command(
         self,
-        command: Command | ContextMenu | Group,
+        command: Command[Any, ..., Any] | ContextMenu | Group,
         /,
         *,
         guild: Snowflake | None = MISSING,
@@ -79,8 +79,8 @@ class MaxisGlobalLinkTree(discord.app_commands.CommandTree):
 class MaxisBot(commands.Bot):
     """Custom Bot class to use MaxisGlobalLinkTree"""
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs, tree_cls=MaxisGlobalLinkTree)
+    def __init__(self, command_prefix: str, intents: discord.Intents, **kwargs: Any):
+        super().__init__(command_prefix=command_prefix, intents=intents, **kwargs, tree_cls=MaxisGlobalLinkTree)
 
 
 # Create bot instance (no prefix needed since we're using slash commands only yet add)
@@ -102,7 +102,85 @@ class Main:
 def init_data():
     """Initialize data from MongoDB"""
     try:
-        client = MongoClient(CONNSTR)
+
+
+        class GeneralDoc(TypedDict):
+            name: str
+            key: list[Any]
+            val: list[Any]
+
+
+        class ReplyDoc(TypedDict):
+            name: str
+            key: list[str]
+            val: list[str]
+
+
+        class WarnDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[WarnDocValue]
+
+
+        class WarnDocValue(TypedDict):
+            key: list[int]
+            val: list[WarnDocValueValue]
+
+
+        class WarnDocValueValue(TypedDict):
+            id: int
+            warns: int
+            causes: list[str]
+
+
+        class BalanceDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[int]
+
+
+        class ItemDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[ItemDocValue]
+
+
+        class ItemDocValue(TypedDict):
+            key: list[str]
+            val: list[int]
+
+
+        class WorkDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[datetime]
+
+
+        class RobDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[datetime]
+
+
+        class DailyDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[datetime]
+
+
+        class WeeklyDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[datetime]
+
+
+        class MonthlyDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[datetime]
+
+
+        client = MongoClient[GeneralDoc](CONNSTR)
         db = client["UnknownDatabase"]
         collection = db["UnknownCollection"]
 
@@ -110,16 +188,18 @@ def init_data():
             doc_name = doc["name"]
 
             if doc_name == "reply":
+                docReply: ReplyDoc = doc
                 custom_replies.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docReply["key"] or []
+                vals = docReply["val"] or []
                 for i in range(len(keys)):
                     custom_replies[keys[i]] = vals[i]
 
             elif doc_name == "warn":
+                docWarn: WarnDoc = doc
                 warn_map.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docWarn["key"] or []
+                vals = docWarn["val"] or []
                 for i in range(len(keys)):
                     server_id = keys[i] or 0
                     warns_data = vals[i] or {}
@@ -137,16 +217,18 @@ def init_data():
                     warn_map[server_id] = warns_dict
 
             elif doc_name == "balance":
+                docBalance: BalanceDoc = doc
                 balance_map.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docBalance["key"] or []
+                vals = docBalance["val"] or []
                 for i in range(len(keys)):
                     balance_map[keys[i]] = vals[i]
 
             elif doc_name == "item":
+                docItem: ItemDoc = doc
                 Shop.owned_items.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docItem["key"] or []
+                vals = docItem["val"] or []
                 for i in range(len(keys)):
                     user_id = keys[i] or 0
                     items_data = vals[i] or {}
@@ -158,9 +240,10 @@ def init_data():
                     Shop.owned_items[user_id] = items_dict
 
             elif doc_name == "work":
+                docWork: WorkDoc = doc
                 user_worked_times.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docWork["key"] or []
+                vals = docWork["val"] or []
                 for i in range(len(keys)):
                     user_worked_times[keys[i]] = vals[i]
                     user_worked_times[keys[i]] = user_worked_times[keys[i]].replace(
@@ -168,9 +251,10 @@ def init_data():
                     )
 
             elif doc_name == "rob":
+                docRob: RobDoc = doc
                 user_robbed_times.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docRob["key"] or []
+                vals = docRob["val"] or []
                 for i in range(len(keys)):
                     user_robbed_times[keys[i]] = vals[i]
                     user_robbed_times[keys[i]] = user_robbed_times[keys[i]].replace(
@@ -178,9 +262,10 @@ def init_data():
                     )
 
             elif doc_name == "daily":
+                docDaily: DailyDoc = doc
                 user_daily_times.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docDaily["key"] or []
+                vals = docDaily["val"] or []
                 for i in range(len(keys)):
                     user_daily_times[keys[i]] = vals[i]
                     user_daily_times[keys[i]] = user_daily_times[keys[i]].replace(
@@ -188,9 +273,10 @@ def init_data():
                     )
 
             elif doc_name == "weekly":
+                docWeekly: WeeklyDoc = doc
                 user_weekly_times.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docWeekly["key"] or []
+                vals = docWeekly["val"] or []
                 for i in range(len(keys)):
                     user_weekly_times[keys[i]] = vals[i]
                     user_weekly_times[keys[i]] = user_weekly_times[keys[i]].replace(
@@ -198,9 +284,10 @@ def init_data():
                     )
 
             elif doc_name == "monthly":
+                docMonthly: MonthlyDoc = doc
                 user_monthly_times.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docMonthly["key"] or []
+                vals = docMonthly["val"] or []
                 for i in range(len(keys)):
                     user_monthly_times[keys[i]] = vals[i]
                     user_monthly_times[keys[i]] = user_monthly_times[keys[i]].replace(
@@ -222,15 +309,35 @@ def init_data():
 def init_user_settings():
     """Initialize user settings from MongoDB"""
     try:
-        client = MongoClient(CONNSTR)
+
+
+        class GeneralDoc(TypedDict):
+            name: str
+            key: list[Any]
+            val: list[Any]
+
+
+        class UserSettingsDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[UserSettingsDocValue]
+
+
+        class UserSettingsDocValue(TypedDict):
+            dm: bool
+            passive: bool
+
+
+        client = MongoClient[GeneralDoc](CONNSTR)
         db = client["UnknownDatabase"]
         collection = db["UnknownCollection"]
 
         for doc in collection.find():
             if doc["name"] == "usersettings":
+                docUserSettings: UserSettingsDoc = doc
                 user_settings_map.clear()
-                keys = doc["key"] or []
-                vals = doc["val"] or []
+                keys = docUserSettings["key"] or []
+                vals = docUserSettings["val"] or []
                 for i in range(len(keys)):
                     user_id = keys[i]
                     settings_data = vals[i]

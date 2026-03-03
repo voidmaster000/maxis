@@ -2,8 +2,10 @@
 Unified slash command setup
 """
 
+from discord.ext import commands
 
-def setup_slash_commands(bot):
+
+def setup_slash_commands(bot: commands.Bot):
     """Setup all slash commands"""
     # Import lazily to avoid circular imports when bot.main loads this module
     from bot.commands import basic_commands, currency_commands, mod_commands
