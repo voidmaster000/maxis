@@ -106,7 +106,7 @@ class ComponentsListener:
             current += (pattern_multiplier * i) + pattern_adder
             pattern.append(current)
 
-        question = "n(i) = n(i - 1) + (i * m) + a, n(0) = 0, i = 1 to 9 given below, find n(10):\n" + ", ".join(map(str, pattern))
+        question = "n(i) = n(i - 1) + (i * m) + a, find n(10):\n" + ", ".join(map(str, pattern))
         answer = current + (pattern_multiplier * 10) + pattern_adder
 
         return question, answer
