@@ -99,14 +99,14 @@ class ComponentsListener:
         """Generate a number pattern question"""
         pattern_multiplier = random.randint(1, 3)
         pattern_adder = random.randint(1, 8)
-        current = 1
+        current = 0
         pattern: list[int] = []
 
         for i in range(1, 10):
             current += (pattern_multiplier * i) + pattern_adder
             pattern.append(current)
 
-        question = "1, " + ", ".join(map(str, pattern))
+        question = "n(i) = n(i - 1) + (i * m) + a, n(0) = 0, i = 1 to 9 given below, find n(10):\n" + ", ".join(map(str, pattern))
         answer = current + (pattern_multiplier * 10) + pattern_adder
 
         return question, answer
