@@ -8,197 +8,190 @@
 [![discord.py](https://img.shields.io/badge/discord.py-2.0+-blue.svg)](https://github.com/Rapptz/discord.py)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-Maxis is a feature-rich Discord bot built with discord.py, offering currency system, moderation tools, utility commands, and interactive features. This bot is the successor to [UnknownBot-latest](https://github.com/UnknownCoder56/UnknownBot-latest), providing improved functionality and modern slash command support.
+Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, moderation, utility, and interactive features.. This bot is the successor to [UnknownBot-latest](https://github.com/UnknownCoder56/UnknownBot-latest), providing improved functionality and modern slash command support.
 
 ## Features
 
-### 💰 Currency System
-- **Economy Commands**: Work, rob, daily/weekly/monthly rewards
-- **Balance Management**: Check balance, transfer money, leaderboard
-- **Shop System**: Buy and use items including Hacker Laptop and Nitro
-- **User Settings**: Configure DMs and passive mode for protection
+### Utility
 
-### 🛡️ Moderation Tools
-- **User Management**: Kick, ban, unban users
-- **Warning System**: Warn users, clear warns, view warn history
-- **Message Control**: Clear messages, nuke channels
-- **Timeout**: Temporarily restrict users
+- Help system with category selector UI
+- Bot/server/user information commands
+- Custom auto-replies for message content triggers
+- Math expression calculator
+- Text-to-image generation (`Pillow`)
+- Currency conversion via ExchangeRate API
+- Color generation tools (`/makecolor`, `/randomcolor`)
+- Rock-Paper-Scissors (choice or interactive buttons)
+- ADMES query command + owner tunnel URL command
 
-### 🎮 Utility & Fun
-- **Interactive Games**: Rock Paper Scissors
-- **Information**: Bot info, server info, user info, ping
-- **Custom Replies**: Set automated responses
-- **Currency Converter**: Real-time currency conversion
-- **Text to Image**: Convert text to images
-- **Random Color Generator**: Generate random colors
-- **ADMES AI**: Ask questions to the bot's AI system
+### Economy
 
-### 🌐 Web Interface
-- Built-in web server for monitoring and management
-- ADMES server for advanced features
+- Balance tracking and money transfer
+- Work/rob/daily/weekly/monthly reward commands with cooldowns
+- Server and global leaderboards
+- Inventory + shop + buy/use item flow
+- User setting support for passive mode and bank DM notifications
 
-## Installation
+### Moderation
 
-### Prerequisites
-- Python 3.8 or higher
-- MongoDB database
-- Discord Bot Token
+- Kick, ban, unban
+- Mute, unmute
+- Warn, clearwarns, getwarns
+- Clear messages and channel nuke
 
-### Setup
+### Web + ADMES
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/UnknownCoder56/maxis.git
-   cd maxis
-   ```
+- FastAPI web server (`/`) showing online status + invite button
+- ADMES client that posts questions to remote bridge and polls answers
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Requirements
 
-3. **Configure environment variables**
-   
-   Create a `.env` file in the root directory:
-   ```env
-   TOKEN=your_discord_bot_token
-   CONNSTR=your_mongodb_connection_string
-   PORT=8080
-   ```
+- Python 3.10+
+- MongoDB instance
+- Discord bot token
 
-4. **Run the bot**
-   ```bash
-   python -m bot.main
-   ```
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
 
 ## Configuration
 
+Create a `.env` file in project root:
+
+```env
+TOKEN=your_discord_bot_token
+CONNSTR=your_mongodb_connection_string
+PORT=8080
+EXAPI=your_exchange_rate_api_key
+OWNER_USER_ID=(your user id)
+```
+
 ### Environment Variables
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `TOKEN` | Discord bot token from Discord Developer Portal | Yes |
-| `CONNSTR` | MongoDB connection string | Yes |
-| `PORT` | Port for web server (default: 8080) | No |
+- `TOKEN` (required): Discord bot token
+- `CONNSTR` (required): MongoDB connection string
+- `PORT` (optional, default `8080`): FastAPI web server port
+- `EXAPI` (optional but required for `/currconv`): ExchangeRate API key
+- `OWNER_USER_ID` (optional, default set in code): owner-only access for `/admes_tunnel`
 
-### MongoDB Setup
+## Run
 
-The bot requires a MongoDB database with a collection named `UnknownCollection` in the `UnknownDatabase` database. The bot will automatically initialize data structures on first run.
+```bash
+pip install -r requirements.txt
+python -m bot.main
+```
 
 ## Commands
 
-Maxis uses Discord's slash commands for all interactions. Type `/` in Discord to see available commands.
+### Utility Commands
 
-### Basic Commands
+- `/ping`
+- `/hello`
+- `/datetime`
+- `/help [category]`
+- `/replies`
+- `/botinfo`
+- `/userinfo [user]`
+- `/serverinfo`
+- `/admes <query>`
+- `/admes_tunnel [url]` (owner only)
+- `/makefile <filename> <content>`
+- `/calculate <expression>`
+- `/reply <text> <reply>`
+- `/noreply <text>`
+- `/dm <user> <message>`
+- `/rps [choice]`
+- `/tti <text>`
+- `/setting <type> <value>`
+- `/currconv <amount> <from_currency> <to_currency>`
+- `/makecolor <red> <green> <blue>`
+- `/randomcolor`
 
-| Command | Description |
-|---------|-------------|
-| `/help` | Display help message with all commands |
-| `/ping` | Check bot latency |
-| `/hello` | Get a greeting from the bot |
-| `/botinfo` | View information about Maxis |
-| `/serverinfo` | Display server information |
-| `/userinfo` | Display user information |
-| `/replies` | View all custom replies |
-| `/reply` | Set a custom reply trigger |
-| `/noreply` | Remove a custom reply |
-| `/dm` | Send a DM to a user |
-| `/rps` | Play Rock Paper Scissors |
-| `/tti` | Convert text to image |
-| `/setting` | Configure your user settings |
-| `/currconv` | Convert between currencies |
-| `/randomcolor` | Generate a random color |
-| `/admes` | Ask the ADMES AI a question |
+### Economy Commands
 
-### Currency Commands
-
-| Command | Description |
-|---------|-------------|
-| `/balance` | Check your or another user's balance |
-| `/daily` | Claim daily reward (🪙 5,000) |
-| `/weekly` | Claim weekly reward (🪙 10,000) |
-| `/monthly` | Claim monthly reward (🪙 50,000) |
-| `/work` | Work to earn money |
-| `/rob` | Rob another user (risky!) |
-| `/give` | Transfer money to another user |
-| `/baltop` | View the richest users |
-| `/buy` | Purchase items from the shop |
-| `/use` | Use an item from your inventory |
-| `/inventory` | View your owned items |
-| `/shop` | Browse available items |
+- `/balance [user]`
+- `/daily`
+- `/weekly`
+- `/monthly`
+- `/work`
+- `/rob <user>`
+- `/give <user> <amount>`
+- `/leaderboard`
+- `/globalleaderboard`
+- `/inventory`
+- `/shop [item]`
+- `/buy <item>`
+- `/use <item>`
 
 ### Moderation Commands
 
-| Command | Description |
-|---------|-------------|
-| `/kick` | Kick a user from the server |
-| `/ban` | Ban a user from the server |
-| `/unban` | Unban a user |
-| `/timeout` | Timeout a user temporarily |
-| `/untimeout` | Remove timeout from a user |
-| `/warn` | Warn a user |
-| `/clearwarns` | Clear all warnings for a user |
-| `/getwarns` | View warnings for a user |
-| `/clear` | Delete a specified number of messages |
-| `/nuke` | Clear all messages in a channel |
+- `/kick <user> [reason]`
+- `/ban <user> [reason]`
+- `/unban <user>`
+- `/mute <user>`
+- `/unmute <user>`
+- `/warn <user> <cause>`
+- `/clearwarns <user>`
+- `/getwarns <user>`
+- `/clear <amount>`
+- `/nuke`
+
+## Shop Items (Current)
+
+- Juice
+- Nitro
+- Hacker Code
+- Hacker Laptop
+- Pet Cat
+- Premium Pass
+- Magna Diamond
+
+Notes:
+
+- `Nitro` reduces active work and daily cooldown timers.
+- `Hacker Laptop` opens an interactive flow; running Hacker Code can reward or cost coins based on modal answer.
+
+## MongoDB Notes
+
+The project currently uses:
+
+- database: `UnknownDatabase`
+- collection: `UnknownCollection`
+
+Documents are keyed by `name` (e.g., `balance`, `warn`, `item`, `reply`, `usersettings`, cooldown datasets).
 
 ## Project Structure
 
-```
+```text
 maxis/
 ├── bot/
+│   ├── main.py
+│   ├── slash_commands.py
+│   ├── helper.py
+│   ├── components.py
+│   ├── modals.py
+│   ├── web_server.py
+│   ├── admes_server.py
 │   ├── commands/
-│   │   ├── basic_commands.py    # Utility and fun commands
-│   │   ├── currency_commands.py # Economy system commands
-│   │   └── mod_commands.py      # Moderation commands
-│   ├── objects/
-│   │   ├── shop.py              # Shop and items
-│   │   ├── user_settings.py     # User preferences
-│   │   ├── warn.py              # Warning system
-│   │   ├── nitro.py             # Nitro item
-│   │   └── hacker_laptop.py     # Hacker Laptop item
-│   ├── main.py                  # Bot entry point
-│   ├── slash_commands.py        # Command setup
-│   ├── components.py            # Button/select interactions
-│   ├── modals.py                # Modal interactions
-│   ├── helper.py                # Helper functions
-│   ├── web_server.py            # Web interface
-│   └── admes_server.py          # ADMES AI server
-├── resources/                   # Bot resources
-├── requirements.txt             # Python dependencies
-└── .gitignore                   # Git ignore rules
+│   │   ├── basic_commands.py
+│   │   ├── currency_commands.py
+│   │   └── mod_commands.py
+│   └── objects/
+│       ├── shop.py
+│       ├── nitro.py
+│       ├── hacker_laptop.py
+│       ├── user_settings.py
+│       └── warn.py
+├── resources/
+│   ├── commands.json
+│   ├── currencies.json
+│   ├── index.html
+│   └── public/
+└── requirements.txt
 ```
-
-## Bot Intents
-
-The bot requires the following Discord intents:
-- `message_content` - Read message content
-- `members` - Access member information
-- `guilds` - Access guild information
-- `dm_messages` - Handle direct messages
-- `guild_messages` - Read guild messages
-
-Make sure these intents are enabled in the [Discord Developer Portal](https://discord.com/developers/applications).
-
-## Contributing
-
-Contributions are welcome! Feel free to:
-- Report bugs
-- Suggest new features
-- Submit pull requests
-
-## About
-
-Maxis is the successor to [UnknownBot-latest](https://github.com/UnknownCoder56/UnknownBot-latest), rebuilt from the ground up with modern Discord API features, improved architecture, and enhanced functionality.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, questions, or feature requests, please open an issue on GitHub.
-
----
-
-Made with ❤️ by UnknownCoder56
+MIT. See `LICENSE`.
