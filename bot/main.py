@@ -371,9 +371,6 @@ async def on_ready():
     """Called when bot is ready"""
     print(f"{bot.user} has logged in!")
 
-    # Initialize shop
-    Shop.init_shop()
-
     # Initialize user settings from database
     init_user_settings()
 
@@ -453,6 +450,8 @@ async def on_interaction(interaction: discord.Interaction):
 
 
 # Setup slash commands
+# Initialize shop items before command registration
+Shop.init_shop()
 setup_slash_commands(bot)
 
 
