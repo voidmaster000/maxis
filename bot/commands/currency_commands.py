@@ -624,6 +624,12 @@ def setup_currency_commands(bot: commands.Bot):
         description="Shows a list of all items in the shop, and their details",
     )
     @app_commands.describe(item="The item to view details for (optional)")
+    @app_commands.choices(
+        item=[
+            app_commands.Choice(name=shop_item.name, value=shop_item.command)
+            for shop_item in Shop.items
+        ]
+    )
     async def shop(interaction: discord.Interaction, item: Optional[str] = None):
         user_id = interaction.user.id
 
@@ -668,7 +674,13 @@ def setup_currency_commands(bot: commands.Bot):
             await interaction.response.send_message(embed=embed)
 
     @bot.tree.command(name="buy", description="Buy an item from the shop")
-    @app_commands.describe(item="The item codename to buy")
+    @app_commands.describe(item="The item to buy")
+    @app_commands.choices(
+        item=[
+            app_commands.Choice(name=shop_item.name, value=shop_item.command)
+            for shop_item in Shop.items
+        ]
+    )
     async def buy(interaction: discord.Interaction, item: str):
         item_lower = item.lower()
         for shop_item in Shop.items:
@@ -691,7 +703,13 @@ def setup_currency_commands(bot: commands.Bot):
         )
 
     @bot.tree.command(name="use", description="Use an item in your inventory")
-    @app_commands.describe(item="The item codename to use")
+    @app_commands.describe(item="The item to use")
+    @app_commands.choices(
+        item=[
+            app_commands.Choice(name=shop_item.name, value=shop_item.command)
+            for shop_item in Shop.items
+        ]
+    )
     async def use(interaction: discord.Interaction, item: str):
         item_lower = item.lower()
         for shop_item in Shop.items:
