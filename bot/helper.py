@@ -118,6 +118,23 @@ def get_random_integer(max_inclusive: int, min_inclusive: int) -> int:
     return val
 
 
+def generate_pattern():
+    """Generate a number pattern question"""
+    pattern_multiplier = random.randint(1, 3)
+    pattern_adder = random.randint(1, 8)
+    current = 0
+    pattern: list[int] = []
+
+    for i in range(1, 10):
+        current += (pattern_multiplier * i) + pattern_adder
+        pattern.append(current)
+
+    question = "n(i) = n(i - 1) + (i * m) + a, find n(10):"
+    answer = current + (pattern_multiplier * 10) + pattern_adder
+
+    return question, ", ".join(map(str, pattern)), answer
+
+
 def solve_expression(expr: str) -> ExpressionResult:
     """Evaluate a mathematical expression"""
     try:
@@ -163,17 +180,30 @@ def solve_expression(expr: str) -> ExpressionResult:
                 op = operators[i]
                 if op == "-":
                     nthMinus = operators[:i].count("-")
-                    allMinusIndexes = [i for i, c in enumerate(sampledExprForRealtimeUpdates) if c == "-"]
+                    allMinusIndexes = [
+                        i
+                        for i, c in enumerate(sampledExprForRealtimeUpdates)
+                        if c == "-"
+                    ]
                     indexOfThisMinus = allMinusIndexes[nthMinus]
-                    if indexOfThisMinus > 0 and sampledExprForRealtimeUpdates[indexOfThisMinus - 1] in "+-*/%^":
+                    if (
+                        indexOfThisMinus > 0
+                        and sampledExprForRealtimeUpdates[indexOfThisMinus - 1]
+                        in "+-*/%^"
+                    ):
                         operands[i] = -operands[i]  # Handle negative after operator
                         operators.pop(i)  # Remove negative for the number
-                        sampledExprForRealtimeUpdates = sampledExprForRealtimeUpdates[:indexOfThisMinus] + sampledExprForRealtimeUpdates[indexOfThisMinus + 1:]  # Remove the minus from the sampled expression for accurate indexing
+                        sampledExprForRealtimeUpdates = (
+                            sampledExprForRealtimeUpdates[:indexOfThisMinus]
+                            + sampledExprForRealtimeUpdates[indexOfThisMinus + 1 :]
+                        )  # Remove the minus from the sampled expression for accurate indexing
                         # No increment when pop because in-place shift
                     elif indexOfThisMinus == 0:
                         operands[i] = -operands[i]  # Handle first/lone leading negative
                         operators.pop(i)  # Remove negative for the number
-                        sampledExprForRealtimeUpdates = sampledExprForRealtimeUpdates[1:]  # Remove the minus from the sampled expression for accurate indexing
+                        sampledExprForRealtimeUpdates = sampledExprForRealtimeUpdates[
+                            1:
+                        ]  # Remove the minus from the sampled expression for accurate indexing
                         # No increment when pop because in-place shift
                     else:
                         i += 1  # Normal subtraction operator, move to next
@@ -248,7 +278,7 @@ def _get_top_parentheses_groups(expr: str) -> list[str]:
             start = stack.pop()
             if not stack:  # Only consider top-level groups
                 groups.append(
-                    expr[(start + 1):i]
+                    expr[(start + 1) : i]
                 )  # Remove parentheses from group (exclusive selection)
     return groups
 
@@ -264,12 +294,10 @@ def refresh_replies(connstr: str):
     def refresh():
         try:
 
-
             class ReplyDoc(TypedDict):
                 name: str
                 key: list[str]
                 val: list[str]
-
 
             client = pymongo.MongoClient[ReplyDoc](connstr)
             db = client["UnknownDatabase"]
@@ -300,17 +328,14 @@ def refresh_user_settings(connstr: str, user_settings_map: Dict[int, UserSetting
     def refresh():
         try:
 
-
             class UserSettingsDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[UserSettingsDocValue]
 
-
             class UserSettingsDocValue(TypedDict):
                 dm: bool
                 passive: bool
-
 
             client = pymongo.MongoClient[UserSettingsDoc](connstr)
             db = client["UnknownDatabase"]
@@ -350,12 +375,10 @@ def refresh_balances(connstr: str):
     def refresh():
         try:
 
-
             class BalanceDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[int]
-
 
             client = pymongo.MongoClient[BalanceDoc](connstr)
             db = client["UnknownDatabase"]
@@ -386,19 +409,21 @@ def refresh_works(connstr: str, user_worked_times: Dict[int, datetime]):
     def refresh():
         try:
 
-
             class WorkDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[datetime]
-
 
             client = pymongo.MongoClient[WorkDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_worked_times.values()]
-            doc: WorkDoc = {"name": "work", "key": list(user_worked_times.keys()), "val": dates}
+            doc: WorkDoc = {
+                "name": "work",
+                "key": list(user_worked_times.keys()),
+                "val": dates,
+            }
 
             if collection.count_documents({"name": "work"}) > 0:
                 collection.replace_one({"name": "work"}, doc)
@@ -419,19 +444,21 @@ def refresh_robs(connstr: str, user_robbed_times: Dict[int, datetime]):
     def refresh():
         try:
 
-
             class RobDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[datetime]
-
 
             client = pymongo.MongoClient[RobDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_robbed_times.values()]
-            doc: RobDoc = {"name": "rob", "key": list(user_robbed_times.keys()), "val": dates}
+            doc: RobDoc = {
+                "name": "rob",
+                "key": list(user_robbed_times.keys()),
+                "val": dates,
+            }
 
             if collection.count_documents({"name": "rob"}) > 0:
                 collection.replace_one({"name": "rob"}, doc)
@@ -452,19 +479,21 @@ def refresh_dailies(connstr: str, user_daily_times: Dict[int, datetime]):
     def refresh():
         try:
 
-
             class DailyDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[datetime]
-
 
             client = pymongo.MongoClient[DailyDoc](connstr)
             db = client["UnknownDatabase"]
             collection = db["UnknownCollection"]
 
             dates = [dt for dt in user_daily_times.values()]
-            doc: DailyDoc = {"name": "daily", "key": list(user_daily_times.keys()), "val": dates}
+            doc: DailyDoc = {
+                "name": "daily",
+                "key": list(user_daily_times.keys()),
+                "val": dates,
+            }
 
             if collection.count_documents({"name": "daily"}) > 0:
                 collection.replace_one({"name": "daily"}, doc)
@@ -485,12 +514,10 @@ def refresh_weeklies(connstr: str, user_weekly_times: Dict[int, datetime]):
     def refresh():
         try:
 
-
             class WeeklyDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[datetime]
-
 
             client = pymongo.MongoClient[WeeklyDoc](connstr)
             db = client["UnknownDatabase"]
@@ -522,12 +549,10 @@ def refresh_monthlies(connstr: str, user_monthly_times: Dict[int, datetime]):
     def refresh():
         try:
 
-
             class MonthlyDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[datetime]
-
 
             client = pymongo.MongoClient[MonthlyDoc](connstr)
             db = client["UnknownDatabase"]
@@ -559,23 +584,19 @@ def refresh_warns(connstr: str):
     def refresh():
         try:
 
-
             class WarnDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[WarnDocValue]
 
-
             class WarnDocValue(TypedDict):
                 key: list[int]
                 val: list[WarnDocValueValue]
-
 
             class WarnDocValueValue(TypedDict):
                 id: int
                 warns: int
                 causes: list[str]
-
 
             client = pymongo.MongoClient[WarnDoc](connstr)
             db = client["UnknownDatabase"]

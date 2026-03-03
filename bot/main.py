@@ -16,6 +16,7 @@ from discord.utils import MISSING
 from pymongo import MongoClient
 
 from bot.helper import custom_replies, balance_map, warn_map, get_random_color
+from bot.objects.hacker_laptop import history_map, LaptopHistoryDoc
 from bot.objects.user_settings import UserSettings
 from bot.objects.warn import Warn
 from bot.objects.shop import Shop
@@ -80,7 +81,12 @@ class MaxisBot(commands.Bot):
     """Custom Bot class to use MaxisGlobalLinkTree"""
 
     def __init__(self, command_prefix: str, intents: discord.Intents, **kwargs: Any):
-        super().__init__(command_prefix=command_prefix, intents=intents, **kwargs, tree_cls=MaxisGlobalLinkTree)
+        super().__init__(
+            command_prefix=command_prefix,
+            intents=intents,
+            **kwargs,
+            tree_cls=MaxisGlobalLinkTree,
+        )
 
 
 # Create bot instance (no prefix needed since we're using slash commands only yet add)
@@ -103,82 +109,68 @@ def init_data():
     """Initialize data from MongoDB"""
     try:
 
-
         class GeneralDoc(TypedDict):
             name: str
             key: list[Any]
             val: list[Any]
-
 
         class ReplyDoc(TypedDict):
             name: str
             key: list[str]
             val: list[str]
 
-
         class WarnDoc(TypedDict):
             name: str
             key: list[int]
             val: list[WarnDocValue]
 
-
         class WarnDocValue(TypedDict):
             key: list[int]
             val: list[WarnDocValueValue]
-
 
         class WarnDocValueValue(TypedDict):
             id: int
             warns: int
             causes: list[str]
 
-
         class BalanceDoc(TypedDict):
             name: str
             key: list[int]
             val: list[int]
-
 
         class ItemDoc(TypedDict):
             name: str
             key: list[int]
             val: list[ItemDocValue]
 
-
         class ItemDocValue(TypedDict):
             key: list[str]
             val: list[int]
-
 
         class WorkDoc(TypedDict):
             name: str
             key: list[int]
             val: list[datetime]
 
-
         class RobDoc(TypedDict):
             name: str
             key: list[int]
             val: list[datetime]
-
 
         class DailyDoc(TypedDict):
             name: str
             key: list[int]
             val: list[datetime]
 
-
         class WeeklyDoc(TypedDict):
             name: str
             key: list[int]
             val: list[datetime]
 
-
         class MonthlyDoc(TypedDict):
             name: str
             key: list[int]
             val: list[datetime]
-
 
         client = MongoClient[GeneralDoc](CONNSTR)
         db = client["UnknownDatabase"]
@@ -294,6 +286,14 @@ def init_data():
                         tzinfo=timezone.utc
                     )
 
+            elif doc_name == "laptop_history":
+                docLaptopHistory: LaptopHistoryDoc = doc
+                history_map.clear()
+                keys = docLaptopHistory["key"] or []
+                vals = docLaptopHistory["val"] or []
+                for i in range(len(keys)):
+                    history_map[keys[i]] = vals[i]
+
             elif doc_name == "usersettings":
                 continue  # Handled in init_user_settings()
 
@@ -310,23 +310,19 @@ def init_user_settings():
     """Initialize user settings from MongoDB"""
     try:
 
-
         class GeneralDoc(TypedDict):
             name: str
             key: list[Any]
             val: list[Any]
-
 
         class UserSettingsDoc(TypedDict):
             name: str
             key: list[int]
             val: list[UserSettingsDocValue]
 
-
         class UserSettingsDocValue(TypedDict):
             dm: bool
             passive: bool
-
 
         client = MongoClient[GeneralDoc](CONNSTR)
         db = client["UnknownDatabase"]

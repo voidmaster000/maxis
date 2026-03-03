@@ -4,9 +4,10 @@ Shop and ShopItem classes for the economy system
 
 import asyncio
 from typing import Coroutine, Dict, Optional, Callable, TypeAlias, TypedDict
-import discord
-from bot.helper import get_random_color, debit_balance
 
+import discord
+
+from bot.helper import get_random_color, debit_balance
 from bot.objects.user_settings import UserSettings
 
 UseFunc: TypeAlias = Callable[[discord.Interaction], Coroutine[None, None, None]]
@@ -208,17 +209,14 @@ class Shop:
             try:
                 from pymongo import MongoClient
 
-
                 class ItemDoc(TypedDict):
                     name: str
                     key: list[int]
                     val: list[ItemDocValue]
 
-
                 class ItemDocValue(TypedDict):
                     key: list[str]
                     val: list[int]
-
 
                 client = MongoClient[ItemDoc](connstr)
                 db = client["UnknownDatabase"]

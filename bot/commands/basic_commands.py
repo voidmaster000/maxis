@@ -97,7 +97,7 @@ def setup_basic_commands(bot: commands.Bot):
     async def datetime_cmd(interaction: discord.Interaction):
         nowlocal = datetime.now()
         nowutc = datetime.now(timezone.utc)
-        embed = discord.Embed(title="Current Time:-", color=get_random_color())
+        embed = discord.Embed(title="Current Date & Time:", color=get_random_color())
         embed.add_field(name="Local Time", value=f"<t:{int(nowlocal.timestamp())}:F>")
         embed.add_field(name="UTC/GMT", value=nowutc.strftime("%d %B %Y %I:%M:%S %p"))
         await interaction.response.send_message(embed=embed)

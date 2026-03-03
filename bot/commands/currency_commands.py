@@ -607,7 +607,9 @@ def setup_currency_commands(bot: commands.Bot):
             for name, count in user_items.items():
                 if count > 0:
                     index += 1
-                    item_text.append(f"{index}) {[shop_item for shop_item in Shop.items if shop_item.name == name][0].emoji} {name} (Count: {count})")
+                    item_text.append(
+                        f"{index}) {[shop_item for shop_item in Shop.items if shop_item.name == name][0].emoji} {name} (Count: {count})"
+                    )
 
         if not item_text:
             item_text.append("There are no items in your inventory!")

@@ -3,14 +3,12 @@ Component interaction handlers
 """
 
 import discord
-import random
 from bot.helper import (
     get_random_color,
     get_win_status,
     get_choice_name,
     get_random_integer,
 )
-from bot.objects.shop import Shop
 
 
 class ComponentsListener:
@@ -58,58 +56,19 @@ class ComponentsListener:
             )
             return
 
-        if "code" in custom_id:
-            if (
-                user_id not in Shop.owned_items
-                or "Hacker Code" not in Shop.owned_items[user_id]
-            ):
-                await interaction.response.send_message(
-                    embed=discord.Embed(
-                        title="Error!",
-                        description="You don't have the Hacker Code! Buy it from the shop.",
-                        color=get_random_color(),
-                    ),
-                    ephemeral=True,
-                )
-                return
-
-            # Generate pattern question
-            question, pattern, answer = ComponentsListener._generate_pattern()
-
-            modal = discord.ui.Modal(title="What's the next number in the pattern?")
-            modal.add_item(
-                discord.ui.TextInput(
-                    label=question,
-                    placeholder=pattern,
-                    custom_id="laptop_code_answer",
-                    required=True,
-                )
+        modal = discord.ui.Modal(title="Laptop Command Prompt")
+        modal.add_item(
+            discord.ui.TextInput(
+                label="Enter command",
+                placeholder="Try: help",
+                custom_id="laptop_cmd_input",
+                required=True,
+                max_length=120,
             )
-            modal.custom_id = f"laptop_code_result_{answer}"
-            await interaction.response.send_modal(modal)
-
-        elif "off" in custom_id:
-            embed = discord.Embed(
-                title="You shut down the laptop.", color=get_random_color()
-            )
-            await interaction.response.edit_message(embed=embed, view=None)
-
-    @staticmethod
-    def _generate_pattern():
-        """Generate a number pattern question"""
-        pattern_multiplier = random.randint(1, 3)
-        pattern_adder = random.randint(1, 8)
-        current = 0
-        pattern: list[int] = []
-
-        for i in range(1, 10):
-            current += (pattern_multiplier * i) + pattern_adder
-            pattern.append(current)
-
-        question = "n(i) = n(i - 1) + (i * m) + a, find n(10):"
-        answer = current + (pattern_multiplier * 10) + pattern_adder
-
-        return question, ", ".join(map(str, pattern)), answer
+        )
+        message_id = interaction.message.id if interaction.message else 0
+        modal.custom_id = f"laptop_cmd_input:{user_id}:{message_id}"
+        await interaction.response.send_modal(modal)
 
     @staticmethod
     async def _handle_help_category(interaction: discord.Interaction):
