@@ -747,8 +747,8 @@ https://user783667580106702848.pepich.de/""",
     )
     @app_commands.choices(
         value=[
-            app_commands.Choice(name="Enabled/True", value="true"),
-            app_commands.Choice(name="Disabled/False", value="false"),
+            app_commands.Choice(name="Enabled", value="true"),
+            app_commands.Choice(name="Disabled", value="false"),
         ]
     )
     async def change_user_settings(

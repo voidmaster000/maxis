@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from discord.ext import commands
 
-from bot.helper import resource_path
+from bot.helper import resource_path, VERSION
 
 app = FastAPI()
 
@@ -33,6 +33,7 @@ async def index(request: Request):
             "request": request,
             "invite_url": INVITE_URL,
             "status": f"Online - {guild_count} servers",
+            "version": VERSION,
         },
     )
 
