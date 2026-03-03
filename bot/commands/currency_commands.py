@@ -643,8 +643,8 @@ def setup_currency_commands(bot: commands.Bot):
                         f"> Persistent?: {'Yes' if shop_item.is_persistent else 'No'}\n"
                         f"> Cost: :coin: {shop_item.cost}\n"
                         f"> Amount owned: {Shop.get_amount_owned(user_id, shop_item.name)}\n"
-                        f"> Command to get: ```/buy {shop_item.command}```\n"
-                        f"> Command to use: ```/use {shop_item.command}```",
+                        f"> Command to get: `/buy {shop_item.command}`\n"
+                        f"> Command to use: `/use {shop_item.command}`",
                         color=get_random_color(),
                     )
                     await interaction.response.send_message(embed=embed)
@@ -666,9 +666,7 @@ def setup_currency_commands(bot: commands.Bot):
                     value=f"> Description: {shop_item.desc}\n"
                     f"> Persistent?: {'Yes' if shop_item.is_persistent else 'No'}\n"
                     f"> Cost: :coin: {shop_item.cost}\n"
-                    f"> Amount owned: {Shop.get_amount_owned(user_id, shop_item.name)}\n"
-                    f"> Command to get: ```/buy {shop_item.command}```\n"
-                    f"> Command to use: ```/use {shop_item.command}```",
+                    f"> Amount owned: {Shop.get_amount_owned(user_id, shop_item.name)}",
                     inline=False,
                 )
             await interaction.response.send_message(embed=embed)
