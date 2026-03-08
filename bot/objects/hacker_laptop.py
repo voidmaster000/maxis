@@ -11,12 +11,6 @@ from pymongo import MongoClient
 
 from bot.helper import get_random_color
 
-# Configuration
-MAX_HISTORY_LINES = 8
-
-# Global state
-history_map: HistoryMap = {}
-
 
 class CommandHistoryEntry(TypedDict):
     timestamp: str
@@ -35,6 +29,12 @@ class LaptopHistoryDoc(TypedDict):
     key: list[str]
     val: list[list[CommandHistoryEntry]]
 
+
+# Configuration
+MAX_HISTORY_LINES = 8
+
+# Global state
+history_map: HistoryMap = {}
 
 def _get_connstr() -> str:
     """Get Mongo connection string lazily to avoid circular imports."""
