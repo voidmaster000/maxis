@@ -119,33 +119,33 @@ def init_data():
             key: list[str]
             val: list[str]
 
-        class WarnDoc(TypedDict):
-            name: str
-            key: list[int]
-            val: list[WarnDocValue]
+        class WarnDocValueValue(TypedDict):
+            id: int
+            warns: int
+            causes: list[str]
 
         class WarnDocValue(TypedDict):
             key: list[int]
             val: list[WarnDocValueValue]
 
-        class WarnDocValueValue(TypedDict):
-            id: int
-            warns: int
-            causes: list[str]
+        class WarnDoc(TypedDict):
+            name: str
+            key: list[int]
+            val: list[WarnDocValue]
 
         class BalanceDoc(TypedDict):
             name: str
             key: list[int]
             val: list[int]
 
+        class ItemDocValue(TypedDict):
+            key: list[str]
+            val: list[int]
+
         class ItemDoc(TypedDict):
             name: str
             key: list[int]
             val: list[ItemDocValue]
-
-        class ItemDocValue(TypedDict):
-            key: list[str]
-            val: list[int]
 
         class WorkDoc(TypedDict):
             name: str
@@ -315,14 +315,14 @@ def init_user_settings():
             key: list[Any]
             val: list[Any]
 
+        class UserSettingsDocValue(TypedDict):
+            dm: bool
+            passive: bool
+
         class UserSettingsDoc(TypedDict):
             name: str
             key: list[int]
             val: list[UserSettingsDocValue]
-
-        class UserSettingsDocValue(TypedDict):
-            dm: bool
-            passive: bool
 
         client = MongoClient[GeneralDoc](CONNSTR)
         db = client["UnknownDatabase"]
