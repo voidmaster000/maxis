@@ -209,14 +209,14 @@ class Shop:
             try:
                 from pymongo import MongoClient
 
+                class ItemDocValue(TypedDict):
+                    key: list[str]
+                    val: list[int]
+
                 class ItemDoc(TypedDict):
                     name: str
                     key: list[int]
                     val: list[ItemDocValue]
-
-                class ItemDocValue(TypedDict):
-                    key: list[str]
-                    val: list[int]
 
                 client = MongoClient[ItemDoc](connstr)
                 db = client["UnknownDatabase"]

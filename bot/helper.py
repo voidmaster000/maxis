@@ -328,14 +328,14 @@ def refresh_user_settings(connstr: str, user_settings_map: Dict[int, UserSetting
     def refresh():
         try:
 
+            class UserSettingsDocValue(TypedDict):
+                dm: bool
+                passive: bool
+
             class UserSettingsDoc(TypedDict):
                 name: str
                 key: list[int]
                 val: list[UserSettingsDocValue]
-
-            class UserSettingsDocValue(TypedDict):
-                dm: bool
-                passive: bool
 
             client = pymongo.MongoClient[UserSettingsDoc](connstr)
             db = client["UnknownDatabase"]
@@ -584,19 +584,19 @@ def refresh_warns(connstr: str):
     def refresh():
         try:
 
-            class WarnDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[WarnDocValue]
-
-            class WarnDocValue(TypedDict):
-                key: list[int]
-                val: list[WarnDocValueValue]
-
             class WarnDocValueValue(TypedDict):
                 id: int
                 warns: int
                 causes: list[str]
+            
+            class WarnDocValue(TypedDict):
+                key: list[int]
+                val: list[WarnDocValueValue]
+
+            class WarnDoc(TypedDict):
+                name: str
+                key: list[int]
+                val: list[WarnDocValue]
 
             client = pymongo.MongoClient[WarnDoc](connstr)
             db = client["UnknownDatabase"]
