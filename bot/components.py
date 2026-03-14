@@ -3,7 +3,7 @@ Component interaction handlers
 """
 
 import discord
-from typing import cast
+from typing import Any, cast
 from bot.helper import (
     get_random_color,
     get_win_status,
@@ -153,18 +153,20 @@ class ComponentsListener:
         # Extract the current board state from the button custom ids
         board = [["" for _ in range(3)] for _ in range(3)]
         for row in buttons_grid:
-            if not isinstance(row, discord.ui.ActionRow):
+            row_children = cast(list[Any], getattr(row, "children", []))
+            if not row_children:
                 continue
-            row_children = cast(list[object], getattr(row, "children", []))
             for button in row_children:
-                if not isinstance(button, discord.ui.Button):
+                button_custom_id = getattr(button, "custom_id", None)
+                if not isinstance(button_custom_id, str) or not button_custom_id.startswith("ttt_"):
                     continue
-                typed_button = cast(discord.ui.Button[discord.ui.View], button)
-                button_custom_id = typed_button.custom_id
-                if button_custom_id and button_custom_id.startswith("ttt_"):
-                    _, r, c = button_custom_id.split("_")
-                    r, c = int(r), int(c)
-                    board[r][c] = "X" if typed_button.label == "X" else "O"
+                _, r, c = button_custom_id.split("_")
+                r, c = int(r), int(c)
+                button_label = getattr(button, "label", None)
+                if button_label == "X":
+                    board[r][c] = "X"
+                elif button_label == "O":
+                    board[r][c] = "O"
 
         # Update the board with the user's move
         board[player_move_row][player_move_col] = "X"
