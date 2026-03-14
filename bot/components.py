@@ -3,11 +3,17 @@ Component interaction handlers
 """
 
 import discord
+from typing import cast
 from bot.helper import (
     get_random_color,
     get_win_status,
     get_choice_name,
     get_random_integer,
+    ttt_check_terminal_state,
+    ttt_get_possible_moves_in_turn,
+    ttt_get_state_after_move,
+    ttt_get_terminal_state_value,
+    ttt_minimax
 )
 
 
@@ -26,6 +32,8 @@ class ComponentsListener:
             await ComponentsListener._handle_help_category(interaction)
         elif custom_id.startswith("rps_"):
             await ComponentsListener._handle_rps(interaction, custom_id)
+        elif custom_id.startswith("ttt_"):
+            await ComponentsListener._handle_ttt(interaction, custom_id)
         else:
             await interaction.response.send_message(
                 embed=discord.Embed(
@@ -131,3 +139,132 @@ class ComponentsListener:
             )
 
         await interaction.response.edit_message(embed=embed, view=None)
+
+    @staticmethod
+    async def _handle_ttt(interaction: discord.Interaction, custom_id: str):
+        """Handle Tic Tac Toe button clicks"""
+        player_move_row = int(custom_id.split("_")[1])
+        player_move_col = int(custom_id.split("_")[2])
+        buttons_grid = interaction.message.components if interaction.message else []
+        if not buttons_grid:
+            await interaction.response.defer()
+            return
+        
+        # Extract the current board state from the button custom ids
+        board = [["" for _ in range(3)] for _ in range(3)]
+        for row in buttons_grid:
+            if not isinstance(row, discord.ui.ActionRow):
+                continue
+            row_children = cast(list[object], getattr(row, "children", []))
+            for button in row_children:
+                if not isinstance(button, discord.ui.Button):
+                    continue
+                typed_button = cast(discord.ui.Button[discord.ui.View], button)
+                button_custom_id = typed_button.custom_id
+                if button_custom_id and button_custom_id.startswith("ttt_"):
+                    _, r, c = button_custom_id.split("_")
+                    r, c = int(r), int(c)
+                    board[r][c] = "X" if typed_button.label == "X" else "O"
+
+        # Update the board with the user's move
+        board[player_move_row][player_move_col] = "X"
+
+        # Check if the game has reached a terminal state after the user's move
+        if ttt_check_terminal_state(board):
+            terminal_value = ttt_get_terminal_state_value(board)
+            if terminal_value == 1:
+                result_embed = discord.Embed(
+                    title="You win!",
+                    description="Congratulations, you won the game!",
+                    color=get_random_color(),
+                )
+            elif terminal_value == -1:
+                result_embed = discord.Embed(
+                    title="Bot wins!",
+                    description="Sorry, the bot won this time.",
+                    color=get_random_color(),
+                )
+            else:
+                result_embed = discord.Embed(
+                    title="It's a tie!",
+                    description="The game ended in a draw.",
+                    color=get_random_color(),
+                )
+            await interaction.response.edit_message(embed=result_embed, view=None)
+            return
+        
+        # Bot's turn to make a move using minimax algorithm
+        possible_moves = ttt_get_possible_moves_in_turn(board)
+        best_score = float("inf")
+        best_move: tuple[int, int] | None = None
+        for move in possible_moves:
+            next_board = ttt_get_state_after_move(board, move)
+            score = ttt_minimax(next_board, float("-inf"), float("inf"))
+            if score < best_score:
+                best_score = score
+                best_move = move
+
+        if best_move is None:
+            await interaction.response.defer()
+            return
+
+        bot_row, bot_col = best_move
+        board[bot_row][bot_col] = "O"
+
+        # Check if the game has reached a terminal state after the bot's move
+        game_over = ttt_check_terminal_state(board)
+        if game_over:
+            terminal_value = ttt_get_terminal_state_value(board)
+            if terminal_value == 1:
+                result_embed = discord.Embed(
+                    title="You win!",
+                    description="Congratulations, you won the game!",
+                    color=get_random_color(),
+                )
+            elif terminal_value == -1:
+                result_embed = discord.Embed(
+                    title="Bot wins!",
+                    description="Sorry, the bot won this time.",
+                    color=get_random_color(),
+                )
+            else:
+                result_embed = discord.Embed(
+                    title="It's a tie!",
+                    description="The game ended in a draw.",
+                    color=get_random_color(),
+                )
+        else:
+            result_embed = discord.Embed(
+                title="Tic Tac Toe",
+                description="Select a move.",
+                color=get_random_color(),
+            )
+
+        updated_view = discord.ui.View()
+        for i in range(3):
+            for j in range(3):
+                cell = board[i][j]
+                if cell == "X":
+                    label = "X"
+                    style = discord.ButtonStyle.success
+                elif cell == "O":
+                    label = "O"
+                    style = discord.ButtonStyle.danger
+                else:
+                    label = "\u200b"
+                    style = discord.ButtonStyle.secondary
+
+                updated_view.add_item(
+                    discord.ui.Button(
+                        label=label,
+                        style=style,
+                        custom_id=f"ttt_{i}_{j}",
+                        row=i,
+                        disabled=game_over or cell != "",
+                    )
+                )
+
+        await interaction.response.edit_message(
+            embed=result_embed,
+            view=updated_view,
+        )

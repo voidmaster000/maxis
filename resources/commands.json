@@ -79,6 +79,10 @@
     {
       "name": "/randomcolor",
       "desc": "Generates a random color."
+    },
+    {
+      "name": "/ttt",
+      "desc": "Play Tic Tac Toe with the bot."
     }
   ],
   "moderation": [

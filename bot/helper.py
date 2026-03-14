@@ -288,6 +288,91 @@ def get_random_work() -> str:
     return random.choice(WORKS)
 
 
+def ttt_check_terminal_state(board: list[list[str]]) -> bool:
+    """Check if the Tic Tac Toe board is in a terminal state (win or tie)"""
+    # Check rows and columns
+    for i in range(3):
+        if board[i][0] == board[i][1] == board[i][2] != "":
+            return True
+        if board[0][i] == board[1][i] == board[2][i] != "":
+            return True
+    # Check diagonals
+    if board[0][0] == board[1][1] == board[2][2] != "":
+        return True
+    if board[0][2] == board[1][1] == board[2][0] != "":
+        return True
+    # Check for tie (no empty spaces)
+    if all(board[r][c] != "" for r in range(3) for c in range(3)):
+        return True
+    return False
+
+
+def ttt_get_terminal_state_value(board: list[list[str]]) -> int:
+    """Get the value of a terminal Tic Tac Toe board state (1 for X win, -1 for O win, 0 for tie)"""
+    # Check rows and columns
+    for i in range(3):
+        if board[i][0] == board[i][1] == board[i][2] != "":
+            return 1 if board[i][0] == "X" else -1
+        if board[0][i] == board[1][i] == board[2][i] != "":
+            return 1 if board[0][i] == "X" else -1
+    # Check diagonals
+    if board[0][0] == board[1][1] == board[2][2] != "":
+        return 1 if board[0][0] == "X" else -1
+    if board[0][2] == board[1][1] == board[2][0] != "":
+        return 1 if board[0][2] == "X" else -1
+    # Tie or non-terminal state
+    return 0
+
+
+def ttt_get_whose_turn_now(board: list[list[str]]) -> str:
+    """Get whose turn it is in the current Tic Tac Toe board state (X or O)"""
+    x_count = sum(row.count("X") for row in board)
+    o_count = sum(row.count("O") for row in board)
+    return "X" if x_count == o_count else "O"
+
+
+def ttt_get_possible_moves_in_turn(board: list[list[str]]) -> list[tuple[int, int]]:
+    possible_moves: list[tuple[int, int]] = []
+    for r in range(3):
+        for c in range(3):
+            if board[r][c] == "":
+                possible_moves.append((r, c))
+    return possible_moves
+
+
+def ttt_get_state_after_move(board: list[list[str]], move: tuple[int, int]) -> list[list[str]]:
+    new_board = [row.copy() for row in board]
+    r, c = move
+    new_board[r][c] = ttt_get_whose_turn_now(board)
+    return new_board
+
+
+def ttt_minimax(board: list[list[str]], alpha: float, beta: float) -> int:
+    """Minimax algorithm with alpha-beta pruning for Tic Tac Toe"""
+    if ttt_check_terminal_state(board):
+        return ttt_get_terminal_state_value(board)
+    
+    whose_turn = ttt_get_whose_turn_now(board)
+    if whose_turn == "X":  # Maximizing player
+        best_score = float("-inf")
+        for move in ttt_get_possible_moves_in_turn(board):
+            score = ttt_minimax(ttt_get_state_after_move(board, move), alpha, beta)
+            best_score = max(score, best_score)
+            alpha = max(alpha, best_score)
+            if beta <= alpha:
+                break
+        return int(best_score)
+    else:  # Minimizing player
+        best_score = float("inf")
+        for move in ttt_get_possible_moves_in_turn(board):
+            score = ttt_minimax(ttt_get_state_after_move(board, move), alpha, beta)
+            best_score = min(score, best_score)
+            beta = min(beta, best_score)
+            if beta <= alpha:
+                break
+        return int(best_score)
+
+
 def refresh_replies(connstr: str):
     """Refresh custom replies in database"""
 

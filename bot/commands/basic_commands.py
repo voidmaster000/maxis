@@ -1045,6 +1045,29 @@ https://user783667580106702848.pepich.de/""",
 
         await interaction.followup.send(embed=embed, file=file)
 
+    @bot.tree.command(name="ttt", description="Play Tic Tac Toe with the bot")
+    async def ttt(interaction: discord.Interaction):
+        await interaction.response.defer()
+
+        view = discord.ui.View()
+        for i in range(3):
+            for j in range(3):
+                view.add_item(
+                    discord.ui.Button(
+                        label="\u200b",
+                        style=discord.ButtonStyle.secondary,
+                        custom_id=f"ttt_{i}_{j}",
+                        row=i,
+                    )
+                )
+
+        embed = discord.Embed(
+            title="Tic Tac Toe",
+            description="Select a move.",
+            color=get_random_color(),
+        )
+        await interaction.followup.send(embed=embed, view=view)
+
 
 async def help_category(category: str) -> discord.Embed:
     """Get help for a specific category"""
