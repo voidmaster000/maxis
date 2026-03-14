@@ -18,6 +18,8 @@ from bot.helper import (
 
 
 class ComponentsListener:
+    _ttt_component_type_logged = False
+
     @staticmethod
     async def on_interaction(interaction: discord.Interaction):
         """Handle component interactions"""
@@ -143,26 +145,43 @@ class ComponentsListener:
     @staticmethod
     async def _handle_ttt(interaction: discord.Interaction, custom_id: str):
         """Handle Tic Tac Toe button clicks"""
+
         player_move_row = int(custom_id.split("_")[1])
         player_move_col = int(custom_id.split("_")[2])
-        buttons_grid = interaction.message.components if interaction.message else []
+        buttons_grid = cast(list[object], interaction.message.components if interaction.message else [])
         if not buttons_grid:
             await interaction.response.defer()
             return
+
+        if not ComponentsListener._ttt_component_type_logged:
+            for row in buttons_grid:
+                typed_row = cast(Any, row)
+                raw_children = typed_row.children if hasattr(typed_row, "children") else None
+                typed_children: list[object] = cast(list[object], raw_children) if isinstance(raw_children, list) else []
+                print(f"[TTT DEBUG] row={type(typed_row).__module__}.{type(typed_row).__name__} children={len(typed_children)}")
+                for button in typed_children:
+                    typed_button = cast(Any, button)
+                    print(f"[TTT DEBUG] button={type(typed_button).__module__}.{type(typed_button).__name__}")
+                break
+            ComponentsListener._ttt_component_type_logged = True
         
         # Extract the current board state from the button custom ids
         board = [["" for _ in range(3)] for _ in range(3)]
         for row in buttons_grid:
-            row_children = cast(list[Any], getattr(row, "children", []))
-            if not row_children:
+            typed_row = cast(Any, row)
+            row_children = typed_row.children if hasattr(typed_row, "children") else None
+            if not isinstance(row_children, list):
                 continue
-            for button in row_children:
-                button_custom_id = getattr(button, "custom_id", None)
+            for button in cast(list[object], row_children):
+                typed_button = cast(Any, button)
+                if not hasattr(typed_button, "custom_id"):
+                    continue
+                button_custom_id = typed_button.custom_id
                 if not isinstance(button_custom_id, str) or not button_custom_id.startswith("ttt_"):
                     continue
                 _, r, c = button_custom_id.split("_")
                 r, c = int(r), int(c)
-                button_label = getattr(button, "label", None)
+                button_label = typed_button.label if hasattr(typed_button, "label") else None
                 if button_label == "X":
                     board[r][c] = "X"
                 elif button_label == "O":
