@@ -3,7 +3,8 @@ Component interaction handlers
 """
 
 import discord
-from typing import Any, cast
+from discord.components import ActionRow, Button as TicTacToeButton
+from typing import cast
 from bot.helper import (
     get_random_color,
     get_win_status,
@@ -18,8 +19,6 @@ from bot.helper import (
 
 
 class ComponentsListener:
-    _ttt_component_type_logged = False
-
     @staticmethod
     async def on_interaction(interaction: discord.Interaction):
         """Handle component interactions"""
@@ -152,36 +151,21 @@ class ComponentsListener:
         if not buttons_grid:
             await interaction.response.defer()
             return
-
-        if not ComponentsListener._ttt_component_type_logged:
-            for row in buttons_grid:
-                typed_row = cast(Any, row)
-                raw_children = typed_row.children if hasattr(typed_row, "children") else None
-                typed_children: list[object] = cast(list[object], raw_children) if isinstance(raw_children, list) else []
-                print(f"[TTT DEBUG] row={type(typed_row).__module__}.{type(typed_row).__name__} children={len(typed_children)}")
-                for button in typed_children:
-                    typed_button = cast(Any, button)
-                    print(f"[TTT DEBUG] button={type(typed_button).__module__}.{type(typed_button).__name__}")
-                break
-            ComponentsListener._ttt_component_type_logged = True
         
         # Extract the current board state from the button custom ids
         board = [["" for _ in range(3)] for _ in range(3)]
         for row in buttons_grid:
-            typed_row = cast(Any, row)
-            row_children = typed_row.children if hasattr(typed_row, "children") else None
-            if not isinstance(row_children, list):
+            if not isinstance(row, ActionRow):
                 continue
-            for button in cast(list[object], row_children):
-                typed_button = cast(Any, button)
-                if not hasattr(typed_button, "custom_id"):
+            for button in row.children:
+                if not isinstance(button, TicTacToeButton):
                     continue
-                button_custom_id = typed_button.custom_id
+                button_custom_id = button.custom_id
                 if not isinstance(button_custom_id, str) or not button_custom_id.startswith("ttt_"):
                     continue
                 _, r, c = button_custom_id.split("_")
                 r, c = int(r), int(c)
-                button_label = typed_button.label if hasattr(typed_button, "label") else None
+                button_label = button.label
                 if button_label == "X":
                     board[r][c] = "X"
                 elif button_label == "O":
