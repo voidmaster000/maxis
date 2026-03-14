@@ -340,7 +340,9 @@ def ttt_get_possible_moves_in_turn(board: list[list[str]]) -> list[tuple[int, in
     return possible_moves
 
 
-def ttt_get_state_after_move(board: list[list[str]], move: tuple[int, int]) -> list[list[str]]:
+def ttt_get_state_after_move(
+    board: list[list[str]], move: tuple[int, int]
+) -> list[list[str]]:
     new_board = [row.copy() for row in board]
     r, c = move
     new_board[r][c] = ttt_get_whose_turn_now(board)
@@ -351,7 +353,7 @@ def ttt_minimax(board: list[list[str]], alpha: float, beta: float) -> int:
     """Minimax algorithm with alpha-beta pruning for Tic Tac Toe"""
     if ttt_check_terminal_state(board):
         return ttt_get_terminal_state_value(board)
-    
+
     whose_turn = ttt_get_whose_turn_now(board)
     if whose_turn == "X":  # Maximizing player
         best_score = float("-inf")
@@ -673,7 +675,7 @@ def refresh_warns(connstr: str):
                 id: int
                 warns: int
                 causes: list[str]
-            
+
             class WarnDocValue(TypedDict):
                 key: list[int]
                 val: list[WarnDocValueValue]

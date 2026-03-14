@@ -14,7 +14,7 @@ from bot.helper import (
     ttt_get_possible_moves_in_turn,
     ttt_get_state_after_move,
     ttt_get_terminal_state_value,
-    ttt_minimax
+    ttt_minimax,
 )
 
 
@@ -144,14 +144,15 @@ class ComponentsListener:
     @staticmethod
     async def _handle_ttt(interaction: discord.Interaction, custom_id: str):
         """Handle Tic Tac Toe button clicks"""
-
         player_move_row = int(custom_id.split("_")[1])
         player_move_col = int(custom_id.split("_")[2])
-        buttons_grid = cast(list[object], interaction.message.components if interaction.message else [])
+        buttons_grid = cast(
+            list[object], interaction.message.components if interaction.message else []
+        )
         if not buttons_grid:
             await interaction.response.defer()
             return
-        
+
         # Extract the current board state from the button custom ids
         board = [["" for _ in range(3)] for _ in range(3)]
         for row in buttons_grid:
@@ -161,7 +162,9 @@ class ComponentsListener:
                 if not isinstance(button, TicTacToeButton):
                     continue
                 button_custom_id = button.custom_id
-                if not isinstance(button_custom_id, str) or not button_custom_id.startswith("ttt_"):
+                if not isinstance(
+                    button_custom_id, str
+                ) or not button_custom_id.startswith("ttt_"):
                     continue
                 _, r, c = button_custom_id.split("_")
                 r, c = int(r), int(c)
@@ -175,7 +178,8 @@ class ComponentsListener:
         board[player_move_row][player_move_col] = "X"
 
         # Check if the game has reached a terminal state after the user's move
-        if ttt_check_terminal_state(board):
+        game_over = ttt_check_terminal_state(board)
+        if game_over:
             terminal_value = ttt_get_terminal_state_value(board)
             if terminal_value == 1:
                 result_embed = discord.Embed(
@@ -195,9 +199,36 @@ class ComponentsListener:
                     description="The game ended in a draw.",
                     color=get_random_color(),
                 )
-            await interaction.response.edit_message(embed=result_embed, view=None)
+
+            updated_view = discord.ui.View()
+            for i in range(3):
+                for j in range(3):
+                    cell = board[i][j]
+                    if cell == "X":
+                        label = "X"
+                        style = discord.ButtonStyle.success
+                    elif cell == "O":
+                        label = "O"
+                        style = discord.ButtonStyle.danger
+                    else:
+                        label = "\u200b"
+                        style = discord.ButtonStyle.secondary
+
+                    updated_view.add_item(
+                        discord.ui.Button(
+                            label=label,
+                            style=style,
+                            custom_id=f"ttt_{i}_{j}",
+                            row=i,
+                            disabled=game_over or cell != "",
+                        )
+                    )
+
+            await interaction.response.edit_message(
+                embed=result_embed, view=updated_view
+            )
             return
-        
+
         # Bot's turn to make a move using minimax algorithm
         possible_moves = ttt_get_possible_moves_in_turn(board)
         best_score = float("inf")

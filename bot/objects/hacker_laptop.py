@@ -36,6 +36,7 @@ MAX_HISTORY_LINES = 8
 # Global state
 history_map: HistoryMap = {}
 
+
 def _get_connstr() -> str:
     """Get Mongo connection string lazily to avoid circular imports."""
     from bot.main import Main  # type: ignore
