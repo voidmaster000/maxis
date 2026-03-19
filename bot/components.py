@@ -147,7 +147,7 @@ class ComponentsListener:
         if not interaction.message:
             await interaction.response.defer()
             return
-        
+
         # Check if user id is same as the one who started the game
         initiating_user_id = int(custom_id.split("_")[3])
         if interaction.user.id != initiating_user_id:

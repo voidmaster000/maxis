@@ -147,9 +147,7 @@ class ModalsListener:
             match command:
                 case "help":
                     ModalsListener._append_history(owner_id, command, "listed commands")
-                    await ModalsListener._refresh_laptop_message(
-                        interaction, owner_id
-                    )
+                    await ModalsListener._refresh_laptop_message(interaction, owner_id)
                     await interaction.followup.send(
                         embed=discord.Embed(
                             title="Available Commands",
@@ -189,9 +187,7 @@ class ModalsListener:
                         secret2=pattern,
                         secret3=answer,
                     )
-                    await ModalsListener._refresh_laptop_message(
-                        interaction, owner_id
-                    )
+                    await ModalsListener._refresh_laptop_message(interaction, owner_id)
                     await interaction.followup.send(
                         embed=discord.Embed(
                             title="Code Challenge",
@@ -255,7 +251,9 @@ class ModalsListener:
                             Main.balance_map,
                         ):
                             ModalsListener._append_history(
-                                owner_id, "codeanswer", f"invalid input (-{PRIZE_OR_COST})"
+                                owner_id,
+                                "codeanswer",
+                                f"invalid input (-{PRIZE_OR_COST})",
                             )
                             await ModalsListener._refresh_laptop_message(
                                 interaction, owner_id
@@ -312,7 +310,9 @@ class ModalsListener:
                                 )
                             )
                 case "shutdown":
-                    ModalsListener._append_history(owner_id, command, "laptop shut down")
+                    ModalsListener._append_history(
+                        owner_id, command, "laptop shut down"
+                    )
                     await ModalsListener._refresh_laptop_message(
                         interaction,
                         owner_id,
@@ -331,24 +331,23 @@ class ModalsListener:
                         title="Current Date & Time:", color=get_random_color()
                     )
                     embed.add_field(
-                        name="Local Time", value=f"<t:{int(datetime.now().timestamp())}:F>"
+                        name="Local Time",
+                        value=f"<t:{int(datetime.now().timestamp())}:F>",
                     )
                     embed.add_field(
                         name="UTC/GMT",
-                        value=datetime.now(timezone.utc).strftime("%d %B %Y %I:%M:%S %p"),
+                        value=datetime.now(timezone.utc).strftime(
+                            "%d %B %Y %I:%M:%S %p"
+                        ),
                     )
                     ModalsListener._append_history(
                         owner_id, command, "displayed current utc datetime"
                     )
-                    await ModalsListener._refresh_laptop_message(
-                        interaction, owner_id
-                    )
+                    await ModalsListener._refresh_laptop_message(interaction, owner_id)
                     await interaction.followup.send(embed=embed, ephemeral=True)
                 case _:
                     ModalsListener._append_history(owner_id, command, "unknown command")
-                    await ModalsListener._refresh_laptop_message(
-                        interaction, owner_id
-                    )
+                    await ModalsListener._refresh_laptop_message(interaction, owner_id)
                     await interaction.followup.send(
                         embed=discord.Embed(
                             title="Unknown Command",
