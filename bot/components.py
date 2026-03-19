@@ -48,11 +48,11 @@ class ComponentsListener:
     @staticmethod
     async def _handle_laptop(interaction: discord.Interaction, custom_id: str):
         """Handle laptop interactions"""
-        parts = custom_id.split("_")
-        if len(parts) < 3:
+        parts = custom_id.split(":")
+        if len(parts) < 2:
             return
 
-        user_id = int(parts[2])
+        user_id = int(parts[1])
 
         if user_id != interaction.user.id:
             await interaction.response.send_message(
@@ -75,8 +75,7 @@ class ComponentsListener:
                 max_length=120,
             )
         )
-        message_id = interaction.message.id if interaction.message else 0
-        modal.custom_id = f"laptop_cmd_input:{user_id}:{message_id}"
+        modal.custom_id = f"laptop_cmd_input:{user_id}"
         await interaction.response.send_modal(modal)
 
     @staticmethod
@@ -144,6 +143,24 @@ class ComponentsListener:
     @staticmethod
     async def _handle_ttt(interaction: discord.Interaction, custom_id: str):
         """Handle Tic Tac Toe button clicks"""
+        # Sanity checks
+        if not interaction.message:
+            await interaction.response.defer()
+            return
+        
+        # Check if user id is same as the one who started the game
+        initiating_user_id = int(custom_id.split("_")[3])
+        if interaction.user.id != initiating_user_id:
+            await interaction.response.send_message(
+                embed=discord.Embed(
+                    title="Error!",
+                    description="You can't play someone else's game!",
+                    color=get_random_color(),
+                ),
+                ephemeral=True,
+            )
+            return
+
         player_move_row = int(custom_id.split("_")[1])
         player_move_col = int(custom_id.split("_")[2])
         buttons_grid = cast(
@@ -166,13 +183,18 @@ class ComponentsListener:
                     button_custom_id, str
                 ) or not button_custom_id.startswith("ttt_"):
                     continue
-                _, r, c = button_custom_id.split("_")
+                _, r, c, _ = button_custom_id.split("_")
                 r, c = int(r), int(c)
                 button_label = button.label
                 if button_label == "X":
                     board[r][c] = "X"
                 elif button_label == "O":
                     board[r][c] = "O"
+
+        # Check if the selected cell is already occupied
+        if board[player_move_row][player_move_col] != "":
+            await interaction.response.defer()
+            return
 
         # Update the board with the user's move
         board[player_move_row][player_move_col] = "X"
@@ -218,9 +240,9 @@ class ComponentsListener:
                         discord.ui.Button(
                             label=label,
                             style=style,
-                            custom_id=f"ttt_{i}_{j}",
+                            custom_id=f"ttt_{i}_{j}_{initiating_user_id}",
                             row=i,
-                            disabled=game_over or cell != "",
+                            disabled=game_over,
                         )
                     )
 
@@ -294,9 +316,9 @@ class ComponentsListener:
                     discord.ui.Button(
                         label=label,
                         style=style,
-                        custom_id=f"ttt_{i}_{j}",
+                        custom_id=f"ttt_{i}_{j}_{initiating_user_id}",
                         row=i,
-                        disabled=game_over or cell != "",
+                        disabled=game_over,
                     )
                 )
 

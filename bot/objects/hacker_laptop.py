@@ -145,7 +145,7 @@ async def use_laptop(interaction: discord.Interaction):
         discord.ui.Button(
             label="Run Command",
             style=discord.ButtonStyle.primary,
-            custom_id=f"laptop_cmd_{user_id}",
+            custom_id=f"laptop_cmd:{user_id}",
         )
     )
 
