@@ -6,9 +6,9 @@ import random
 import re
 from datetime import datetime
 from decimal import Decimal, getcontext
+from enum import Enum
 from pathlib import Path
 from typing import Dict, TypedDict
-from enum import Enum
 
 import discord
 import pymongo
@@ -373,6 +373,22 @@ def ttt_minimax(board: list[list[str]], alpha: float, beta: float) -> int:
             if beta <= alpha:
                 break
         return int(best_score)
+
+
+async def timezone_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[discord.app_commands.Choice[str]]:
+    """Autocomplete function for timezones"""
+    import zoneinfo
+
+    timezones = zoneinfo.available_timezones()
+    choices: list[discord.app_commands.Choice[str]] = []
+    for tz in timezones:
+        if current.lower() in tz.lower():
+            choices.append(discord.app_commands.Choice(name=tz, value=tz))
+        if len(choices) >= 25:
+            break
+    return choices
 
 
 def refresh_replies(connstr: str):

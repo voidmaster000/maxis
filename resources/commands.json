@@ -1,184 +1,184 @@
 {
-  "utility": [
-    {
-      "name": "/ping",
-      "desc": "Displays bot latency."
-    },
-    {
-      "name": "/hello",
-      "desc": "Says hello to you."
-    },
-    {
-      "name": "/datetime",
-      "desc": "Displays the current UTC or GMT date and time."
-    },
-    {
-      "name": "/help (category)",
-      "desc": "Displays this help message (utility, moderation, economy)."
-    },
-    {
-      "name": "/replies",
-      "desc": "Displays all custom replies set."
-    },
-    {
-      "name": "/botinfo",
-      "desc": "Shows information about Maxis."
-    },
-    {
-      "name": "/userinfo (user)",
-      "desc": "Shows mentioned user's info, or yours if not specified."
-    },
-    {
-      "name": "/serverinfo",
-      "desc": "Shows the server's info on which command is run."
-    },
-    {
-      "name": "/admes (query)",
-      "desc": "Ask anything to the bot."
-    },
-    {
-      "name": "/makefile (filename) (content)",
-      "desc": "Creates file from text and returns it."
-    },
-    {
-      "name": "/calculate (expression)",
-      "desc": "Solves a mathematical expression (brackets supported). Supported operations -> +, -, *, /, %, ^."
-    },
-    {
-      "name": "/reply (text) (reply)",
-      "desc": "Makes the bot reply when you send a specific text."
-    },
-    {
-      "name": "/noreply (text)",
-      "desc": "Disables a custom reply."
-    },
-    {
-      "name": "/dm (user) (message)",
-      "desc": "DMs a message to a user."
-    },
-    {
-      "name": "/rps (choice)",
-      "desc": "Play Rock Paper Scissors with the bot."
-    },
-    {
-      "name": "/tti (text)",
-      "desc": "Converts given text to image."
-    },
-    {
-      "name": "/setting (type) (value)",
-      "desc": "Changes your user settings: bankdm/passive -> true/false."
-    },
-    {
-      "name": "/currconv (amount) (from_currency) (to_currency)",
-      "desc": "Converts one currency to another."
-    },
-    {
-      "name": "/makecolor (red) (green) (blue)",
-      "desc": "Generates a color image for given RGB values."
-    },
-    {
-      "name": "/randomcolor",
-      "desc": "Generates a random color."
-    },
-    {
-      "name": "/ttt",
-      "desc": "Play Tic Tac Toe with the bot."
-    }
-  ],
-  "moderation": [
-    {
-      "name": "/nuke",
-      "desc": "Cleans everything in a channel."
-    },
-    {
-      "name": "/clear (amount)",
-      "desc": "Clears specified number of messages (1-100)."
-    },
-    {
-      "name": "/clearwarns (user)",
-      "desc": "Clear all warns for a user."
-    },
-    {
-      "name": "/kick (user) (reason)",
-      "desc": "Kicks the mentioned user."
-    },
-    {
-      "name": "/ban (user) (reason)",
-      "desc": "Bans the mentioned user."
-    },
-    {
-      "name": "/mute (user)",
-      "desc": "Mutes the mentioned user (Disable chat and VC)."
-    },
-    {
-      "name": "/unmute (user)",
-      "desc": "Unmutes the mentioned user (Enable chat and VC)."
-    },
-    {
-      "name": "/warn (user) (cause)",
-      "desc": "Warns a user; multiple warns per server supported."
-    },
-    {
-      "name": "/unban (user)",
-      "desc": "Unbans the mentioned user."
-    },
-    {
-      "name": "/getwarns (user)",
-      "desc": "Gets all warns for a user."
-    }
-  ],
-  "economy": [
-    {
-      "name": "/balance (user)",
-      "desc": "Shows your current bank balance or another user's balance."
-    },
-    {
-      "name": "/daily",
-      "desc": "Get your daily :coin: 5000 earnings!"
-    },
-    {
-      "name": "/weekly",
-      "desc": "Get your weekly :coin: 10000 earnings!"
-    },
-    {
-      "name": "/monthly",
-      "desc": "Get your monthly :coin: 50000 earnings!"
-    },
-    {
-      "name": "/work",
-      "desc": "You work and gain money!"
-    },
-    {
-      "name": "/rob (user)",
-      "desc": "Rob others and get money (does not work in passive mode)."
-    },
-    {
-      "name": "/give (user) (amount)",
-      "desc": "Transfer money to others' accounts (disabled in passive mode)."
-    },
-    {
-      "name": "/leaderboard",
-      "desc": "Compare and check out the richest users of your server!"
-    },
-    {
-      "name": "/globalleaderboard",
-      "desc": "Compare and check out the richest users of our bot (Global)!"
-    },
-    {
-      "name": "/inventory",
-      "desc": "Displays a list of all items in your inventory."
-    },
-    {
-      "name": "/shop (item)",
-      "desc": "Shows a list of all items in the shop, and their details."
-    },
-    {
-      "name": "/buy (item)",
-      "desc": "Buy an item from the shop."
-    },
-    {
-      "name": "/use (item)",
-      "desc": "Use an item in your inventory."
-    }
-  ]
+	"utility": [
+		{
+			"name": "/ping",
+			"desc": "Displays bot latency."
+		},
+		{
+			"name": "/hello",
+			"desc": "Says hello to you."
+		},
+		{
+			"name": "/datetime (timezone)",
+			"desc": "Displays the current date and time."
+		},
+		{
+			"name": "/help (category)",
+			"desc": "Displays this help message (utility, moderation, economy)."
+		},
+		{
+			"name": "/replies",
+			"desc": "Displays all custom replies set."
+		},
+		{
+			"name": "/botinfo",
+			"desc": "Shows information about Maxis."
+		},
+		{
+			"name": "/userinfo (user)",
+			"desc": "Shows mentioned user's info, or yours if not specified."
+		},
+		{
+			"name": "/serverinfo",
+			"desc": "Shows the server's info on which command is run."
+		},
+		{
+			"name": "/admes (query)",
+			"desc": "Ask anything to the bot."
+		},
+		{
+			"name": "/makefile (filename) (content)",
+			"desc": "Creates file from text and returns it."
+		},
+		{
+			"name": "/calculate (expression)",
+			"desc": "Solves a mathematical expression (brackets supported). Supported operations -> +, -, *, /, %, ^."
+		},
+		{
+			"name": "/reply (text) (reply)",
+			"desc": "Makes the bot reply when you send a specific text."
+		},
+		{
+			"name": "/noreply (text)",
+			"desc": "Disables a custom reply."
+		},
+		{
+			"name": "/dm (user) (message)",
+			"desc": "DMs a message to a user."
+		},
+		{
+			"name": "/rps (choice)",
+			"desc": "Play Rock Paper Scissors with the bot."
+		},
+		{
+			"name": "/tti (text)",
+			"desc": "Converts given text to image."
+		},
+		{
+			"name": "/setting (type) (value)",
+			"desc": "Changes your user settings: bankdm/passive -> true/false."
+		},
+		{
+			"name": "/currconv (amount) (from_currency) (to_currency)",
+			"desc": "Converts one currency to another."
+		},
+		{
+			"name": "/makecolor (red) (green) (blue)",
+			"desc": "Generates a color image for given RGB values."
+		},
+		{
+			"name": "/randomcolor",
+			"desc": "Generates a random color."
+		},
+		{
+			"name": "/ttt",
+			"desc": "Play Tic Tac Toe with the bot."
+		}
+	],
+	"moderation": [
+		{
+			"name": "/nuke",
+			"desc": "Cleans everything in a channel."
+		},
+		{
+			"name": "/clear (amount)",
+			"desc": "Clears specified number of messages (1-100)."
+		},
+		{
+			"name": "/clearwarns (user)",
+			"desc": "Clear all warns for a user."
+		},
+		{
+			"name": "/kick (user) (reason)",
+			"desc": "Kicks the mentioned user."
+		},
+		{
+			"name": "/ban (user) (reason)",
+			"desc": "Bans the mentioned user."
+		},
+		{
+			"name": "/mute (user)",
+			"desc": "Mutes the mentioned user (Disable chat and VC)."
+		},
+		{
+			"name": "/unmute (user)",
+			"desc": "Unmutes the mentioned user (Enable chat and VC)."
+		},
+		{
+			"name": "/warn (user) (cause)",
+			"desc": "Warns a user; multiple warns per server supported."
+		},
+		{
+			"name": "/unban (user)",
+			"desc": "Unbans the mentioned user."
+		},
+		{
+			"name": "/getwarns (user)",
+			"desc": "Gets all warns for a user."
+		}
+	],
+	"economy": [
+		{
+			"name": "/balance (user)",
+			"desc": "Shows your current bank balance or another user's balance."
+		},
+		{
+			"name": "/daily",
+			"desc": "Get your daily :coin: 5000 earnings!"
+		},
+		{
+			"name": "/weekly",
+			"desc": "Get your weekly :coin: 10000 earnings!"
+		},
+		{
+			"name": "/monthly",
+			"desc": "Get your monthly :coin: 50000 earnings!"
+		},
+		{
+			"name": "/work",
+			"desc": "You work and gain money!"
+		},
+		{
+			"name": "/rob (user)",
+			"desc": "Rob others and get money (does not work in passive mode)."
+		},
+		{
+			"name": "/give (user) (amount)",
+			"desc": "Transfer money to others' accounts (disabled in passive mode)."
+		},
+		{
+			"name": "/leaderboard",
+			"desc": "Compare and check out the richest users of your server!"
+		},
+		{
+			"name": "/globalleaderboard",
+			"desc": "Compare and check out the richest users of our bot (Global)!"
+		},
+		{
+			"name": "/inventory",
+			"desc": "Displays a list of all items in your inventory."
+		},
+		{
+			"name": "/shop (item)",
+			"desc": "Shows a list of all items in the shop, and their details."
+		},
+		{
+			"name": "/buy (item)",
+			"desc": "Buy an item from the shop."
+		},
+		{
+			"name": "/use (item)",
+			"desc": "Use an item in your inventory."
+		}
+	]
 }

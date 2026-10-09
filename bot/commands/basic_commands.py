@@ -6,28 +6,29 @@ import json
 import math
 import os
 import random
-import requests
-from datetime import datetime, timezone
-from typing import Optional, TypedDict
+from datetime import datetime
 from io import BytesIO
+from typing import Optional, TypedDict
 
 import discord
+import requests
 from discord import app_commands
-from discord.ui import Select, View
 from discord.ext import commands
+from discord.ui import Select, View
 from PIL import Image, ImageDraw, ImageFont
 
 from bot.helper import (
-    get_random_color,
-    solve_expression,
     VERSION,
     custom_replies,
-    refresh_replies,
-    get_win_status,
     get_choice_name,
+    get_random_color,
     get_random_integer,
+    get_win_status,
+    refresh_replies,
     refresh_user_settings,
     resource_path,
+    solve_expression,
+    timezone_autocomplete,
 )
 from bot.objects.user_settings import UserSettings
 
@@ -91,15 +92,22 @@ def setup_basic_commands(bot: commands.Bot):
         )
         await interaction.response.send_message(embed=embed)
 
-    @bot.tree.command(
-        name="datetime", description="Displays the current UTC or GMT date and time"
-    )
-    async def datetime_cmd(interaction: discord.Interaction):
+    @bot.tree.command(name="datetime", description="Displays the current date and time")
+    @app_commands.describe(timezone="Choose which timezone to display the time in")
+    @app_commands.autocomplete(timezone=timezone_autocomplete)
+    async def datetime_cmd(
+        interaction: discord.Interaction, timezone: Optional[str] = None
+    ):
+        import zoneinfo
+
         nowlocal = datetime.now()
-        nowutc = datetime.now(timezone.utc)
+        nowutc = datetime.now(zoneinfo.ZoneInfo("UTC"))
         embed = discord.Embed(title="Current Date & Time:", color=get_random_color())
         embed.add_field(name="Local Time", value=f"<t:{int(nowlocal.timestamp())}:F>")
         embed.add_field(name="UTC/GMT", value=nowutc.strftime("%d %B %Y %I:%M:%S %p"))
+        if timezone:
+            nowtz = datetime.now(zoneinfo.ZoneInfo(timezone))
+            embed.add_field(name=timezone, value=nowtz.strftime("%d %B %Y %I:%M:%S %p"))
         await interaction.response.send_message(embed=embed)
 
     @bot.tree.command(name="help", description="Display help message")
