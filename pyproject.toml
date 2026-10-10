@@ -28,3 +28,9 @@ select = ["E", "F", "I", "UP", "B"]
 # messages that read worse when wrapped, and there is no formatter to lay the
 # code out instead.
 ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# the commands are coroutines, so async tests run without a marker on each one
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
