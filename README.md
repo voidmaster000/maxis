@@ -51,6 +51,7 @@ python -m venv venv
 .\venv\Scripts\python.exe -m ruff check   # lint (config in pyproject.toml)
 .\venv\Scripts\python.exe -m pyright       # type check
 .\venv\Scripts\python.exe -m pytest        # tests
+.\venv\Scripts\python.exe -m pytest --cov=bot --cov-report=term-missing
 ```
 
 `pyproject.toml` points `pyright` and `ruff` at `./venv`, so both resolve the
