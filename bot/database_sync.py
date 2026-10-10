@@ -4,7 +4,11 @@ Database sync for Maxis.
 Loads and saves `bot.global_state` to MongoDB. Every group of state is stored as
 one document holding parallel `key` and `val` lists, tagged by `name`.
 
-Saves always happen on a background thread so a command never blocks on IO.
+Saving goes through a single background writer thread that shares one Mongo
+client. That matters: handing each save its own thread and its own connection
+let them race, so an older snapshot could land after a newer one and roll the
+database back. One writer keeps saves in the order they were requested, and
+superseded snapshots are collapsed rather than written.
 """
 
 import threading
@@ -27,27 +31,92 @@ class Doc(TypedDict):
 
 
 # --------------------------------------------------------------------------
-# Saving
+# The writer
 # --------------------------------------------------------------------------
+
+_lock = threading.Lock()
+_pending: dict[str, Doc] = {}
+_inflight = 0
+_wake = threading.Event()
+_worker: threading.Thread | None = None
+_client: pymongo.MongoClient | None = None
+
+
+def _collection() -> Any:
+    """The shared client, opened on first use.
+
+    One client for the whole process: pymongo pools connections inside it, so
+    making one per save threw the pooling away and leaked sockets whenever a
+    write raised before its close().
+    """
+    global _client
+    with _lock:
+        if _client is None:
+            _client = pymongo.MongoClient(global_state.CONNSTR, serverSelectionTimeoutMS=5000)
+    return _client[global_state.DATABASE][global_state.COLLECTION]
+
+
+def _writer() -> None:
+    """Drain pending documents until the process exits."""
+    global _inflight
+
+    while True:
+        _wake.wait()
+        _wake.clear()
+        with _lock:
+            batch = list(_pending.items())
+            _pending.clear()
+            _inflight += 1
+        try:
+            for name, doc in batch:
+                try:
+                    _collection().replace_one({"name": name}, doc, upsert=True)
+                except Exception as e:
+                    print(f"Error saving '{name}': {e}")
+        finally:
+            with _lock:
+                _inflight -= 1
 
 
 def _save(name: str, key: list[Any], val: list[Any]) -> None:
-    """Upsert a document in the background."""
+    """Queue a document to be written in the background.
 
-    def run() -> None:
-        try:
-            client: pymongo.MongoClient = pymongo.MongoClient(global_state.CONNSTR)
-            collection = client[global_state.DATABASE][global_state.COLLECTION]
-            doc: Doc = {"name": name, "key": key, "val": val}
-            if collection.count_documents({"name": name}) > 0:
-                collection.replace_one({"name": name}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error saving '{name}': {e}")
+    `key` and `val` must already be snapshots, taken by the caller: if they were
+    read at write time they would describe newer state than the save asked for.
+    """
+    global _worker
 
-    threading.Thread(target=run, daemon=True).start()
+    with _lock:
+        _pending[name] = {"name": name, "key": key, "val": val}
+        if _worker is None:
+            _worker = threading.Thread(target=_writer, daemon=True)
+            _worker.start()
+
+    _wake.set()
+
+
+def flush() -> None:
+    """Block until every queued save has been written, not merely dequeued.
+
+    Waiting only for the queue to empty would let close() shut the client while
+    a write was still in flight.
+    """
+    while True:
+        with _lock:
+            if not _pending and not _inflight:
+                return
+        _wake.set()
+        threading.Event().wait(0.02)
+
+
+def close() -> None:
+    """Flush anything outstanding and close the shared client."""
+    flush()
+    global _client
+    with _lock:
+        if _client is not None:
+            _client.close()
+            _client = None
 
 
 def save_replies() -> None:
@@ -173,13 +242,11 @@ def load_all() -> None:
     that emptiness back over the database.
     """
     try:
-        client: pymongo.MongoClient = pymongo.MongoClient(global_state.CONNSTR)
-        for doc in client[global_state.DATABASE][global_state.COLLECTION].find():
+        for doc in _collection().find():
             try:
                 _load_doc(doc)
             except Exception as e:
                 print(f"Error loading document '{doc.get('name')}': {e}")
-        client.close()
         print("Retrieved all data.")
     except Exception as e:
         print(f"Error initializing data: {e}")
