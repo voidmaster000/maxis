@@ -49,7 +49,7 @@ def _colour_swatch(red: int, green: int, blue: int) -> discord.File:
 
 
 class Image(commands.GroupCog):
-    """Image generation commands (the image help category)."""
+    """Image generation commands (the /image category)."""
 
     @app_commands.command(name="tti", description="Converts given text to image")
     @app_commands.describe(text="The text to convert into image")

@@ -30,7 +30,7 @@ async def require_moderator(interaction: discord.Interaction) -> discord.Guild |
 
 
 class Moderation(commands.GroupCog):
-    """Moderation slash commands (the moderation help category)."""
+    """Moderation slash commands (the /moderation category)."""
 
 
 

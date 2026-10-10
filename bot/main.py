@@ -18,14 +18,31 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from bot import database_sync, global_state
+from bot.commands.economy_commands import Economy
+from bot.commands.help_command import add_help_command
+from bot.commands.image_commands import Image
+from bot.commands.moderation_commands import Moderation
+from bot.commands.utility_commands import Utility
 from bot.components_listener import ComponentsListener
 from bot.helper import get_random_color
 from bot.modals_listener import ModalsListener
 from bot.objects.user_settings import UserSettings
-from bot.slash_commands import setup_slash_commands
+
+# Each category of slash commands is a GroupCog, which registers as an
+# app_commands.Group on the tree. This order is the order the groups appear in
+# Discord's command list, and what /help shows. /help itself is registered
+# separately, as a plain top-level command rather than a category.
+COGS = (Utility, Moderation, Economy, Image)
 
 # Guards against registering the command cogs twice (on_ready can fire again)
 _cogs_loaded = False
+
+
+async def setup_slash_commands(bot: commands.Bot) -> None:
+    """Register every command cog, plus the top-level /help command."""
+    for cog_class in COGS:
+        await bot.add_cog(cog_class())
+    add_help_command(bot)
 
 
 # Bot intents
@@ -65,8 +82,20 @@ class MaxisCommandTree(discord.app_commands.CommandTree):
         super().add_command(command, guild=guild, guilds=guilds, override=override)
 
 
-# Create bot instance (no prefix needed since we're using slash commands only yet add)
-bot = commands.Bot(command_prefix=">", intents=intents, tree_cls=MaxisCommandTree)
+# Maxis is slash-command only. There are no prefix commands, so discord.py's
+# built-in `>help` is turned off -- it walks Cog.__cog_commands__, which a
+# GroupCog never populates, so it could not document these commands anyway.
+# `/help` is registered separately in bot.commands.help_command.
+#
+# command_prefix is still required by discord.py and there is nothing left for
+# it to match, so it stays inert at ">" rather than "" (which would try to
+# parse every ordinary message as a command).
+bot = commands.Bot(
+    command_prefix=">",
+    intents=intents,
+    help_command=None,
+    tree_cls=MaxisCommandTree,
+)
 
 
 async def ensure_user_settings() -> None:
@@ -190,4 +219,8 @@ def _start_status_page() -> None:
 
 if __name__ == "__main__":
     database_sync.load_all()
-    bot.run(global_state.TOKEN)
+    try:
+        bot.run(global_state.TOKEN)
+    finally:
+        # the writer is a daemon thread, so anything still queued would be lost
+        database_sync.close()

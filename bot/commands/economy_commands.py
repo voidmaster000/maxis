@@ -46,7 +46,7 @@ async def _reply_no_such_item(interaction: discord.Interaction, item: str) -> No
 
 
 class Economy(commands.GroupCog):
-    """Economy slash commands (the economy help category)."""
+    """Economy slash commands (the /economy category)."""
 
 
 
