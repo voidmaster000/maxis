@@ -9,23 +9,15 @@ import shutil
 import tempfile
 import zoneinfo
 from datetime import datetime
-from typing import NamedTuple, cast
+from typing import NamedTuple
 
 import discord
 import requests
 from discord import app_commands
 from discord.ext import commands
-from discord.ui import Select, View
 
 from bot import database_sync, global_state
-from bot.helper import (
-    get_random_color,
-    help_category_embed,
-    help_group,
-    help_groups,
-    reply_error,
-    timezone_autocomplete,
-)
+from bot.helper import get_random_color, reply_error, timezone_autocomplete
 from bot.objects.calculator import Calculator
 from bot.objects.rps import RpsGame
 from bot.objects.tictactoe import TicTacToe
@@ -39,20 +31,6 @@ CURRENCY_CHOICES = [
     for code in global_state.CURRENCY_CODES
 ]
 
-
-HELP_PREAMBLE = (
-    "Maxis is a multipurpose bot, currently under active development.\n"
-    "Every command lives under a category, so they are typed as\n"
-    "`/<category> <command>`. Pick one below, or start typing a\n"
-    "category for `/utility help`:"
-)
-
-HELP_FOOTER = (
-    "For more information on the bot, how to use it, or queries\n"
-    "about, contact us on our official discord server:-"
-    "\nhttps://discord.gg/t79ZyuHr5K/\nOr visit Maxis's website:-"
-    "\nhttps://maxis.voidmaster.dev/"
-)
 
 
 class Setting(NamedTuple):
@@ -82,20 +60,10 @@ SETTINGS: dict[str, Setting] = {
 }
 
 
-async def _category_autocomplete(
-    interaction: discord.Interaction, current: str
-) -> list[app_commands.Choice[str]]:
-    """Suggest the registered help categories for /help."""
-    bot = cast(commands.Bot, interaction.client)
-    return [
-        app_commands.Choice(name=group.name, value=group.name)
-        for group in help_groups(bot)
-        if current.lower() in group.name
-    ]
 
 
 class Utility(commands.GroupCog):
-    """Basic utility slash commands (the utility help category)."""
+    """Basic utility slash commands (the /utility category)."""
 
     @app_commands.command(name="ping", description="Displays bot latency")
     async def ping(self, interaction: discord.Interaction):
@@ -134,48 +102,6 @@ class Utility(commands.GroupCog):
         await interaction.response.send_message(embed=embed)
 
     # ------------------------------------------------------------------
-    @app_commands.command(name="help", description="Display help message")
-    @app_commands.describe(category="The category to show help for")
-    @app_commands.autocomplete(category=_category_autocomplete)
-    async def help(
-        self, interaction: discord.Interaction, category: str | None = None
-    ):
-        """Show the command list for one category, or the category index."""
-        # Interaction.client is typed as Client, but for an application
-        # command it is always the Bot that owns the command tree.
-        bot = cast(commands.Bot, interaction.client)
-
-        if category:
-            group = help_group(bot, category)
-            if group is not None:
-                await interaction.response.send_message(
-                    embed=help_category_embed(group)
-                )
-                return
-
-        # No category, or one that does not exist: show the index.
-        groups = help_groups(bot)
-        listing = "\n".join(
-            f"{index}) {group.name.title()} ```{group.name} help {group.name}```"
-            for index, group in enumerate(groups, 1)
-        )
-        embed = discord.Embed(
-            title="Maxis help docs",
-            description=f"{HELP_PREAMBLE}\n\n{listing}\n\n{HELP_FOOTER}",
-            color=get_random_color(),
-        )
-
-        view = View()
-        select: Select[View] = Select(
-            placeholder="Choose a category...",
-            custom_id="help_category",
-            options=[
-                discord.SelectOption(label=group.name.title(), value=group.name)
-                for group in groups
-            ],
-        )
-        view.add_item(select)
-        await interaction.response.send_message(embed=embed, view=view)
 
     @app_commands.command(name="replies", description="Display all custom replies")
     async def replies(self, interaction: discord.Interaction):

@@ -14,7 +14,7 @@ Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, mode
 
 ### Utility
 
-- Help system with category selector UI
+- Help system with a category selector, top-level `/help`
 - Bot/server/user information commands
 - Custom auto-replies for message content triggers
 - Math expression calculator
@@ -50,12 +50,18 @@ python -m venv venv
 
 .\venv\Scripts\python.exe -m ruff check   # lint (config in pyproject.toml)
 .\venv\Scripts\python.exe -m pyright       # type check
+.\venv\Scripts\python.exe -m pytest        # tests
 ```
 
 `pyproject.toml` points `pyright` and `ruff` at `./venv`, so both resolve the
 same discord.py the bot actually runs against rather than any other install on
 the machine. `requirements.txt` is pinned to the versions in `./venv`;
-`requirements-dev.txt` pins the two tools above.
+`requirements-dev.txt` pins the tools above.
+
+The tests run offline. Nothing touches Discord or MongoDB: commands are driven
+through the stand-ins in `tests/conftest.py`, and the database layer is given a
+fake collection. Each test starts from the bot's start-up state and leaves
+nothing queued behind, so the suite passes in any order.
 
 ## Requirements
 
@@ -97,14 +103,16 @@ python -m bot.main
 ## Commands
 
 Every command is invoked as `/<category> <command>`; see
-[Command layout](#command-layout) for why.
+[Command layout](#command-layout) for why. `/help` is the one exception — it is
+top-level, because it documents the categories rather than being one.
+
+- `/help [category]` — the category index, or one category's commands
 
 ### `/utility`
 
 - `/utility ping`
 - `/utility hello`
 - `/utility datetime [timezone]`
-- `/utility help [category]`
 - `/utility replies`
 - `/utility botinfo`
 - `/utility userinfo [user]`
@@ -186,16 +194,16 @@ maxis/
 │   ├── main.py               # wiring + the FastAPI status page
 │   ├── global_state.py       # every constant + all mutable runtime state
 │   ├── database_sync.py      # syncs global_state to MongoDB
-│   ├── slash_commands.py     # registers the cogs
 │   ├── transactions.py       # credit / debit
 │   ├── helper.py             # pure shared helpers + /help rendering
 │   ├── components_listener.py
 │   ├── modals_listener.py
 │   ├── commands/
-│   │   ├── utility_commands.py       # /utility (and /help)
+│   │   ├── utility_commands.py       # /utility
 │   │   ├── economy_commands.py       # /economy
 │   │   ├── moderation_commands.py    # /moderation
-│   │   └── image_commands.py         # /image
+│   │   ├── image_commands.py         # /image
+│   │   └── help_command.py           # /help (top level, not a category)
 │   └── objects/
 │       ├── shop.py             # the catalogue and its lookups
 │       ├── hacker_laptop.py    # the laptop item and its command history
@@ -210,9 +218,15 @@ maxis/
 │   ├── index.html
 │   ├── Inter-SemiBold.ttf
 │   └── public/
+├── tests/
+│   ├── conftest.py            # stand-ins for Discord + per-test state isolation
+│   ├── test_database_sync.py  # the writer and the loader
+│   ├── test_command_tree.py   # command layout, install flags, /help
+│   ├── test_objects.py        # games, calculator, laptop, nitro, image swatch
+│   └── test_economy.py        # money conservation and cooldowns
 ├── requirements.txt
 ├── requirements-dev.txt
-└── pyproject.toml          # pyright + ruff configuration
+└── pyproject.toml          # pyright + ruff + pytest configuration
 ```
 
 ### Data flow
@@ -222,7 +236,7 @@ maxis/
 - **Constants** — env config, paths, cooldowns, DB names, tuning values and the
   reference data (`WORKS`, `CURRENCIES`). Nothing else reads an environment
   variable or defines a module-level constant, apart from `COGS` in
-  `slash_commands.py` and the discord `Choice` objects built for a command's own
+  `main.py` and the discord `Choice` objects built for a command's own
   decorator.
 - **Runtime data** — the mutable collections the cogs share. `database_sync`
   loads it at startup and is the only module that talks to MongoDB, so cogs
@@ -239,6 +253,12 @@ Because the grouping is done by discord.py itself, `/help` has no hand-maintaine
 command list: `help_groups()` / `help_category_embed()` in `helper.py` read the
 registered groups straight off the command tree. Category order is whatever
 discord.py registered, and there is no second list that can drift.
+
+`/help` itself is deliberately *not* a `GroupCog`. A group is never invocable on
+its own, so a group named `help` could only ever be reached as `/help help`, and
+`/help` has to be usable with no category typed. It is registered as a plain
+top-level command instead, which keeps `help_groups()` returning exactly the
+categories.
 
 ## License
 
