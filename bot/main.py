@@ -2,6 +2,7 @@
 Main bot file - Entry point for Maxis
 """
 
+import asyncio
 import threading
 from collections.abc import Sequence
 from typing import Any
@@ -36,6 +37,11 @@ COGS = (Utility, Moderation, Economy, Image)
 
 # Guards against registering the command cogs twice (on_ready can fire again)
 _cogs_loaded = False
+
+# The rest of the start-up work only makes sense once. on_ready fires again on
+# every reconnect, and re-reading the database and re-fetching every member of
+# every guild on each one costs a lot of API quota for no new information.
+_initialised = False
 
 
 async def setup_slash_commands(bot: commands.Bot) -> None:
@@ -109,7 +115,7 @@ async def ensure_user_settings() -> None:
 @bot.event
 async def on_ready():
     """Called when bot is ready"""
-    global _cogs_loaded
+    global _cogs_loaded, _initialised
 
     print(f"{bot.user} has logged in!")
 
@@ -119,18 +125,28 @@ async def on_ready():
         await setup_slash_commands(bot)
         _cogs_loaded = True
 
-    database_sync.load_all()
-    await ensure_user_settings()
-
-    try:
-        synced = await bot.tree.sync()
-        print(f"Synced {len(synced)} command(s)")
-    except Exception as e:
-        print(f"Failed to sync commands: {e}")
-
     await bot.change_presence(
         activity=discord.Activity(type=discord.ActivityType.watching, name=" /help")
     )
+
+    if not _initialised:
+        _initialised = True
+
+        # Reading the database is blocking Mongo I/O. Called straight from the
+        # event loop it stalls every other command for as long as the server
+        # takes to answer -- up to serverSelectionTimeoutMS, five seconds,
+        # which is well past the three seconds Discord allows for a first
+        # response. An interaction that is not answered in that window is dead
+        # and Discord rejects it with error 10062, Unknown interaction.
+        # A thread keeps the loop free to answer while the read happens.
+        await asyncio.to_thread(database_sync.load_all)
+        await ensure_user_settings()
+
+        try:
+            synced = await bot.tree.sync()
+            print(f"Synced {len(synced)} command(s)")
+        except Exception as e:
+            print(f"Failed to sync commands: {e}")
 
     # Start web server (after bot is ready so we have bot.user.id)
     _start_status_page()
