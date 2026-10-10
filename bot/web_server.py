@@ -28,9 +28,9 @@ async def index(request: Request):
     guild_count = len(globalBot.guilds) if globalBot else 0
 
     return templates.TemplateResponse(
+        request,
         "index.html",
         {
-            "request": request,
             "invite_url": INVITE_URL,
             "status": f"Online - {guild_count} servers",
             "version": VERSION,
