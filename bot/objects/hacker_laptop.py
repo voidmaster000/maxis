@@ -1,14 +1,18 @@
 """
-Hacker Laptop item functionality
+Hacker laptop item for the shop.
+
+The laptop owns its command history and the PC screen that shows it, so the
+shop hook, the modal handler and the screen refresh all describe one machine
+instead of each rebuilding the same embed.
 """
 
+import random
 from datetime import datetime
-import threading
-from typing import NotRequired, TypeAlias, TypedDict
+from typing import NotRequired, TypedDict
 
 import discord
-from pymongo import MongoClient
 
+from bot import database_sync, global_state
 from bot.helper import get_random_color
 
 
@@ -21,132 +25,115 @@ class CommandHistoryEntry(TypedDict):
     secret3: NotRequired[str]
 
 
-HistoryMap: TypeAlias = dict[str, list[CommandHistoryEntry]]
+class LaptopHistory:
+    """The commands one user has run on their laptop."""
 
+    def __init__(self, user_id: int) -> None:
+        self.user_id = user_id
 
-class LaptopHistoryDoc(TypedDict):
-    name: str
-    key: list[str]
-    val: list[list[CommandHistoryEntry]]
+    @property
+    def entries(self) -> list[CommandHistoryEntry]:
+        """Every stored entry for this user."""
+        return global_state.laptop_history.get(str(self.user_id), [])
 
+    def append(
+        self,
+        command: str,
+        result: str,
+        secret1: str | None = None,
+        secret2: str | None = None,
+        secret3: int | None = None,
+    ) -> None:
+        """Record one command, and persist the history."""
+        entries = self.entries
+        entry: CommandHistoryEntry = {
+            "timestamp": str(int(datetime.now().timestamp())),
+            "command": command,
+            "result": result,
+        }
+        if secret1 is not None:
+            entry["secret1"] = secret1
+        if secret2 is not None:
+            entry["secret2"] = secret2
+        if secret3 is not None:
+            entry["secret3"] = str(secret3)
 
-# Configuration
-MAX_HISTORY_LINES = 8
+        entries.append(entry)
+        global_state.laptop_history[str(self.user_id)] = entries
+        database_sync.save_laptop_history()
 
-# Global state
-history_map: HistoryMap = {}
+    def recent(self, limit: int = global_state.MAX_HISTORY_LINES) -> list[CommandHistoryEntry]:
+        """The most recent entries, oldest first."""
+        entries = self.entries
+        return entries[-limit:] if entries else []
 
+    def last(self) -> CommandHistoryEntry | None:
+        """The most recent entry, if there is one."""
+        entries = self.entries
+        return entries[-1] if entries else None
 
-def _get_connstr() -> str:
-    """Get Mongo connection string lazily to avoid circular imports."""
-    from bot.main import Main  # type: ignore
+    def formatted(self, limit: int = global_state.MAX_HISTORY_LINES) -> str:
+        """The history as lines ready to drop into an embed field."""
+        entries = self.recent(limit)
+        if not entries:
+            return "No commands executed yet."
 
-    return Main.CONNSTR
-
-
-def refresh_laptop_history():
-    """Refresh laptop command history in database"""
-
-    def refresh():
-        try:
-            client = MongoClient[LaptopHistoryDoc](_get_connstr())
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-            keys = list(history_map.keys())
-            vals = [history_map[k] for k in keys]
-            collection.replace_one(
-                {"name": "laptop_history"},
-                {"name": "laptop_history", "key": keys, "val": vals},
-                upsert=True,
-            )
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing laptop command history: {e}")
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def append_user_cmd_history(
-    user_id: int,
-    command: str,
-    result: str,
-    secret1: str | None = None,
-    secret2: str | None = None,
-    secret3: int | None = None,
-):
-    """Append one command history entry for a user."""
-    key = str(user_id)
-    entries = history_map.get(key, [])
-    entry: CommandHistoryEntry = {
-        "timestamp": str(int(datetime.now().timestamp())),
-        "command": command,
-        "result": result,
-    }
-    if secret1 is not None:
-        entry["secret1"] = secret1
-    if secret2 is not None:
-        entry["secret2"] = secret2
-    if secret3 is not None:
-        entry["secret3"] = str(secret3)
-
-    entries.append(entry)
-    history_map[key] = entries
-    refresh_laptop_history()
-
-
-def get_user_cmd_history(
-    user_id: int, limit: int = MAX_HISTORY_LINES
-) -> list[CommandHistoryEntry]:
-    """Get recent command history entries for a specific user."""
-    entries = history_map.get(str(user_id), [])
-    return entries[-limit:] if entries else []
-
-
-def get_last_user_cmd(user_id: int) -> CommandHistoryEntry | None:
-    """Get the most recent command history entry for a user."""
-    entries = history_map.get(str(user_id), [])
-    return entries[-1] if entries else None
-
-
-def format_user_cmd_history(user_id: int, limit: int = MAX_HISTORY_LINES) -> str:
-    """Format command history for embed display."""
-    history = get_user_cmd_history(user_id, limit)
-    if not history:
-        return "No commands executed yet."
-
-    formatted: list[str] = []
-    for entry in history:
-        timestamp = entry.get("timestamp", "0")
-        command = entry.get("command", "unknown")
-        result = entry.get("result", "")
-        formatted.append(f"<t:{timestamp}:f> `{command}` -> {result}")
-
-    return "\n".join(formatted) if formatted else "No commands executed yet."
-
-
-async def use_laptop(interaction: discord.Interaction):
-    """Use hacker laptop item"""
-    user_id = interaction.user.id
-
-    embed = discord.Embed(
-        title=f"{interaction.user.display_name}'s PC",
-        color=get_random_color(),
-    )
-    embed.add_field(name="OS", value="MaxisOS")
-    embed.add_field(name="VPN Status", value="Connected to MaxisVPN")
-    embed.add_field(
-        name="Command History",
-        value=format_user_cmd_history(user_id),
-        inline=False,
-    )
-
-    view = discord.ui.View()
-    view.add_item(
-        discord.ui.Button(
-            label="Run Command",
-            style=discord.ButtonStyle.primary,
-            custom_id=f"laptop_cmd:{user_id}",
+        return "\n".join(
+            f"<t:{entry.get('timestamp', '0')}:f> `{entry.get('command', 'unknown')}` "
+            f"-> {entry.get('result', '')}"
+            for entry in entries
         )
-    )
 
-    await interaction.followup.send(embed=embed, view=view)
+
+class HackerLaptop:
+    """The laptop item: its PC screen, and the challenge its code asks."""
+
+    def __init__(self, user_id: int, owner_name: str) -> None:
+        self.user_id = user_id
+        self.owner_name = owner_name
+        self.history = LaptopHistory(user_id)
+
+    def screen(self) -> discord.Embed:
+        """The PC screen, with the command history on it."""
+        embed = discord.Embed(
+            title=f"{self.owner_name}'s PC",
+            color=get_random_color(),
+        )
+        embed.add_field(name="OS", value="MaxisOS")
+        embed.add_field(name="VPN Status", value="Connected to MaxisVPN")
+        embed.add_field(
+            name="Command History",
+            value=self.history.formatted(),
+            inline=False,
+        )
+        return embed
+
+    @staticmethod
+    def challenge() -> tuple[str, str, int]:
+        """A number pattern question, as (question, pattern, answer)."""
+        multiplier = random.randint(1, 3)
+        adder = random.randint(1, 8)
+        current = 0
+        pattern: list[int] = []
+
+        for i in range(1, 10):
+            current += (multiplier * i) + adder
+            pattern.append(current)
+
+        question = "n(i) = n(i - 1) + (i * m) + a, find n(10):"
+
+        return question, ", ".join(map(str, pattern)), current + (multiplier * 10) + adder
+
+    @classmethod
+    async def open(cls, interaction: discord.Interaction) -> None:
+        """Shop hook: boot the laptop and show its screen."""
+        laptop = cls(interaction.user.id, interaction.user.display_name)
+        view = discord.ui.View()
+        view.add_item(
+            discord.ui.Button(
+                label="Run Command",
+                style=discord.ButtonStyle.primary,
+                custom_id=f"laptop_cmd:{laptop.user_id}",
+            )
+        )
+        await interaction.followup.send(embed=laptop.screen(), view=view)

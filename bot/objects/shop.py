@@ -2,15 +2,18 @@
 Shop and ShopItem classes for the economy system
 """
 
-import asyncio
-from typing import Coroutine, Dict, Optional, Callable, TypeAlias, TypedDict
+from collections.abc import Callable, Coroutine
 
 import discord
+from discord import app_commands
 
-from bot.helper import get_random_color, debit_balance
-from bot.objects.user_settings import UserSettings
+from bot import database_sync, global_state
+from bot.helper import get_random_color, reply_error
+from bot.objects.hacker_laptop import HackerLaptop
+from bot.objects.nitro import use_nitro
+from bot.transactions import debit
 
-UseFunc: TypeAlias = Callable[[discord.Interaction], Coroutine[None, None, None]]
+type UseFunc = Callable[[discord.Interaction], Coroutine[None, None, None]]
 
 
 class ShopItem:
@@ -23,7 +26,7 @@ class ShopItem:
         emoji: str,
         cost: int,
         is_persistent: bool,
-        use_func: Optional[UseFunc] = None,
+        use_func: UseFunc | None = None,
     ):
         self.name = name
         self.desc = desc
@@ -35,98 +38,82 @@ class ShopItem:
         self.use_func = use_func
         self.is_functional = use_func is not None
 
-    async def use_item(
-        self,
-        interaction: discord.Interaction,
-        connstr: str,
-    ):
+    async def use_item(self, interaction: discord.Interaction) -> None:
         """Use an item from inventory"""
         user_id = interaction.user.id
-        if user_id in Shop.owned_items and self.name in Shop.owned_items[user_id]:
-            if Shop.owned_items[user_id][self.name] > 0:
-                owned = Shop.owned_items[user_id][self.name]
-                if not self.is_persistent:
-                    Shop.owned_items[user_id][self.name] = owned - 1
-                    embed = discord.Embed(
-                        title=f"{interaction.user.display_name} used {self.emoji} {self.name}",
-                        description=f"{self.use_message}\nYou now have {owned - 1} {self.emoji} {self.name}(s).",
-                        color=get_random_color(),
-                    )
-                    await interaction.response.send_message(embed=embed)
-                    Shop.refresh_ownerships(connstr)
-                else:
-                    embed = discord.Embed(
-                        title=f"{interaction.user.display_name} used {self.emoji} {self.name}",
-                        description=self.use_message,
-                        color=get_random_color(),
-                    )
-                    await interaction.response.send_message(embed=embed)
+        owned = global_state.inventory.get(user_id, {})
 
-                if self.is_functional and self.use_func:
-                    asyncio.create_task(self.use_func(interaction))
+        if owned.get(self.name, 0) <= 0:
+            await reply_error(interaction, "You don't have this item! Buy it from the shop to use it.")
+            return
 
-                return
+        remaining = self._consume(user_id, owned)
 
-        embed = discord.Embed(
-            title="Error!",
-            description="You don't have this item! Buy it from the shop to use it.",
-            color=get_random_color(),
+        if self.is_persistent:
+            description = self.use_message
+        else:
+            description = (
+                f"{self.use_message}\n"
+                f"You now have {remaining} {self.emoji} {self.name}(s)."
+            )
+
+        await interaction.response.send_message(
+            embed=discord.Embed(
+                title=f"{interaction.user.display_name} used {self.emoji} {self.name}",
+                description=description,
+                color=get_random_color(),
+            )
         )
-        await interaction.response.send_message(embed=embed, ephemeral=True)
 
-    async def buy_item(
-        self,
-        interaction: discord.Interaction,
-        balance_map: Dict[int, int],
-        user_settings_map: Dict[int, UserSettings],
-        connstr: str,
-    ):
+        if self.is_functional and self.use_func:
+            await self.use_func(interaction)
+
+    def _consume(self, user_id: int, owned: dict) -> int:
+        """Take one of this item, unless it is persistent. Returns the count left."""
+        if self.is_persistent:
+            return owned[self.name]
+
+        remaining = owned[self.name] - 1
+        owned[self.name] = remaining
+        database_sync.save_inventory()
+        return remaining
+
+    async def buy_item(self, interaction: discord.Interaction) -> None:
         """Buy an item from the shop"""
         try:
             user_id = interaction.user.id
-            if user_id not in Shop.owned_items:
-                Shop.owned_items[user_id] = {}
-            elif self.name in Shop.owned_items[user_id]:
-                if Shop.owned_items[user_id][self.name] > 0:
-                    embed = discord.Embed(
-                        title="Error!",
-                        description=f"You already own this item! Use it with ```/use {self.command}```.",
-                        color=get_random_color(),
-                    )
-                    await interaction.response.send_message(embed=embed, ephemeral=True)
-                    return
+            owned = global_state.inventory.setdefault(user_id, {})
 
-            if await debit_balance(
-                self.cost, interaction, connstr, user_settings_map, balance_map
-            ):
-                if self.name in Shop.owned_items[user_id]:
-                    Shop.owned_items[user_id][self.name] += 1
-                else:
-                    Shop.owned_items[user_id][self.name] = 1
+            if owned.get(self.name, 0) > 0:
+                await reply_error(interaction, f"You already own this item! Use it with "
+                            f"```/economy use {self.command}```.")
+                return
 
-                embed = discord.Embed(
+            if not await debit(self.cost, interaction.user, interaction):
+                return
+
+            owned[self.name] = owned.get(self.name, 0) + 1
+            database_sync.save_inventory()
+
+            await interaction.response.send_message(
+                embed=discord.Embed(
                     title="Success!",
-                    description=f"{interaction.user.display_name} purchased 1 {self.emoji} {self.name}.\n"
-                    f"Now you have {Shop.owned_items[user_id][self.name]} {self.emoji} {self.name}(s).",
+                    description=(
+                        f"{interaction.user.display_name} purchased 1 {self.emoji} {self.name}.\n"
+                        f"Now you have {owned[self.name]} {self.emoji} {self.name}(s)."
+                    ),
                     color=get_random_color(),
                 )
-                await interaction.response.send_message(embed=embed)
-                Shop.refresh_ownerships(connstr)
+            )
         except Exception as ex:
             print(f"Error buying item: {ex}")
 
 
 class Shop:
-    items: list[ShopItem] = []
-    owned_items: Dict[int, Dict[str, int]] = {}
+    """The catalogue of items, and the lookups the shop commands need."""
 
-    @staticmethod
-    def init_shop():
-        """Initialize shop items"""
-        from bot.objects.nitro import use_nitro
-        from bot.objects.hacker_laptop import use_laptop
-
-        juice = ShopItem(
+    items: list[ShopItem] = [
+        ShopItem(
             "Juice",
             "Refresh yourself with a cool can of juice.",
             "You drink some juice, and get refreshed.",
@@ -134,8 +121,8 @@ class Shop:
             ":beverage_box:",
             1000,
             False,
-        )
-        nitro = ShopItem(
+        ),
+        ShopItem(
             "Nitro",
             "Speed up your day, and work. Work and daily cooldown will be over.",
             "You use nitro and gain speed, resulting in your work and day being finished faster.",
@@ -144,8 +131,8 @@ class Shop:
             5400,
             False,
             use_nitro,
-        )
-        code = ShopItem(
+        ),
+        ShopItem(
             "Hacker Code",
             "Very special bruteforce attack code. Tested upon top targets.",
             "Use it on your laptop.",
@@ -153,8 +140,8 @@ class Shop:
             ":dvd:",
             90000,
             True,
-        )
-        laptop = ShopItem(
+        ),
+        ShopItem(
             "Hacker Laptop",
             "Have a PC with you anytime, anywhere. Pen-testing utilities pre-installed.",
             "PC has booted.",
@@ -162,9 +149,9 @@ class Shop:
             ":computer:",
             60000,
             True,
-            use_laptop,
-        )
-        cat = ShopItem(
+            HackerLaptop.open,
+        ),
+        ShopItem(
             "Pet Cat",
             "A pet cat, stays with you as a companion when you code.",
             "MEW!!! CODE!!!",
@@ -172,8 +159,8 @@ class Shop:
             ":cat:",
             60000,
             True,
-        )
-        pass_item = ShopItem(
+        ),
+        ShopItem(
             "Premium Pass",
             "Flex item, shows up on rich people's profiles.",
             "No use lol. Flex on others.",
@@ -181,8 +168,8 @@ class Shop:
             ":crown:",
             100000,
             True,
-        )
-        diamond = ShopItem(
+        ),
+        ShopItem(
             "Magna Diamond",
             "Flex item for the very-rich.",
             "FLEX TIME!",
@@ -190,58 +177,29 @@ class Shop:
             ":large_blue_diamond:",
             500000,
             True,
-        )
+        ),
+    ]
 
-        Shop.items = [juice, nitro, code, laptop, cat, pass_item, diamond]
+    @classmethod
+    def find(cls, command: str) -> ShopItem | None:
+        """The item a /economy <command> argument names, or None."""
+        wanted = command.strip().lower()
+        return next((item for item in cls.items if item.command.lower() == wanted), None)
 
-    @staticmethod
-    def get_amount_owned(user_id: int, item_name: str) -> int:
-        """Get amount of item owned by user"""
-        if user_id in Shop.owned_items and item_name in Shop.owned_items[user_id]:
-            return Shop.owned_items[user_id][item_name]
-        return 0
+    @classmethod
+    def by_name(cls, name: str) -> ShopItem | None:
+        """The item with this display name, or None."""
+        return next((item for item in cls.items if item.name == name), None)
 
-    @staticmethod
-    def refresh_ownerships(connstr: str):
-        """Refresh item ownerships in database"""
+    @classmethod
+    def choices(cls) -> list[app_commands.Choice[str]]:
+        """The autocomplete choices for a command's `item` argument."""
+        return [
+            app_commands.Choice(name=item.name, value=item.command)
+            for item in cls.items
+        ]
 
-        def refresh():
-            try:
-                from pymongo import MongoClient
-
-                class ItemDocValue(TypedDict):
-                    key: list[str]
-                    val: list[int]
-
-                class ItemDoc(TypedDict):
-                    name: str
-                    key: list[int]
-                    val: list[ItemDocValue]
-
-                client = MongoClient[ItemDoc](connstr)
-                db = client["UnknownDatabase"]
-                collection = db["UnknownCollection"]
-
-                values: list[ItemDocValue] = []
-                for map_val in Shop.owned_items.values():
-                    values.append(
-                        {"key": list(map_val.keys()), "val": list(map_val.values())}
-                    )
-
-                doc: ItemDoc = {
-                    "name": "item",
-                    "key": list(Shop.owned_items.keys()),
-                    "val": values,
-                }
-
-                if collection.count_documents({"name": "item"}) > 0:
-                    collection.replace_one({"name": "item"}, doc)
-                else:
-                    collection.insert_one(doc)
-                client.close()
-            except Exception as e:
-                print(f"Error refreshing ownerships: {e}")
-
-        import threading
-
-        threading.Thread(target=refresh, daemon=True).start()
+    @classmethod
+    def amount_owned(cls, user_id: int, item_name: str) -> int:
+        """How many of one item a user is carrying."""
+        return global_state.inventory.get(user_id, {}).get(item_name, 0)

@@ -1,3 +1,0 @@
-"""
-Crypto Market functionality
-"""

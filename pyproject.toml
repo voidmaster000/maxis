@@ -1,0 +1,30 @@
+[tool.pyright]
+# Type-check the bot package only, against the project's own virtualenv.
+include = ["bot"]
+exclude = ["**/__pycache__", "venv", "**/venv"]
+
+venvPath = "."
+venv = "venv"
+
+# We deploy to wispbyte, which runs 3.13 -- so this is pinned to the deploy
+# target, not to whatever the local venv happens to be. The local venv is 3.14,
+# which means 3.14-only syntax would run fine here and fail on deploy; pinning
+# the version here is what catches that.
+pythonVersion = "3.13"
+
+typeCheckingMode = "basic"
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+
+[tool.ruff]
+line-length = 88
+# Matched to pythonVersion above, for the same reason.
+target-version = "py313"
+extend-exclude = ["venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# E501 is off on purpose: most long lines here are single-sentence user-facing
+# messages that read worse when wrapped, and there is no formatter to lay the
+# code out instead.
+ignore = ["E501"]

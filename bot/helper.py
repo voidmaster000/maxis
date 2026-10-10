@@ -1,67 +1,38 @@
 """
-Helper utility functions for Maxis
+Shared helpers for Maxis.
+
+Small, stateless helpers used from more than one place: building replies,
+rendering /help, and picking random values. Anything with state or business
+rules belongs elsewhere -- data lives in global_state, persistence in
+database_sync, balance changes in transactions, and per-feature logic in
+bot/objects/.
 """
 
 import random
-import re
-from datetime import datetime
-from decimal import Decimal, getcontext
-from enum import Enum
-from pathlib import Path
-from typing import Dict, TypedDict
+import zoneinfo
 
 import discord
-import pymongo
+from discord import app_commands
+from discord.ext import commands
 
-from bot.objects.user_settings import UserSettings
-from bot.objects.warn import Warn
+from bot import global_state
 
-# Set decimal precision for expression evaluation
-getcontext().prec = 50
-
-# Constants
-VERSION = "5.0.0"
-BASIC_COOLDOWN = 30
-DAILY_COOLDOWN = 86400
-WEEKLY_COOLDOWN = 604800
-MONTHLY_COOLDOWN = 2592000
-
-# Paths
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RESOURCES_DIR = PROJECT_ROOT / "resources"
-
-# Maps (will be initialized from database)
-custom_replies: Dict[str, str] = {}
-balance_map: Dict[int, int] = {}
-warn_map: Dict[int, Dict[int, Warn]] = {}
-
-# Work messages
-WORKS = [
-    "did babysitting for 6 hours and earned",
-    "finished a 100-day job and earned",
-    "found some money on road and got",
-    "sold a modern art picture and earned",
-    "caught a robber and was prized with",
-    "fixed neighbour's PC and earned",
-    "checked his car bonnet and found",
-    "won a bet and earned",
-    "repaired cars at workshop for a day and earned",
-    "won a lucky draw and earned",
-]
+# --------------------------------------------------------------------------
+# Discord helpers
+# Small helpers used while building replies and command arguments.
+# --------------------------------------------------------------------------
 
 
-class RpsResult(Enum):
-    BOT_WIN = "bot_win"
-    USER_WIN = "user_win"
-    TIE = "tie"
-    ERROR = "error"
-
-
-class ExpressionResult:
-    def __init__(self, success: bool, result: Decimal = Decimal("0"), error: str = ""):
-        self.success = success
-        self.result = result
-        self.error = error
+async def reply_error(interaction: discord.Interaction, message: str) -> None:
+    """Reply with a short-lived error embed."""
+    await interaction.response.send_message(
+        embed=discord.Embed(
+            title="Error!",
+            description=message,
+            color=get_random_color(),
+        ),
+        ephemeral=True,
+    )
 
 
 def get_random_color() -> discord.Colour:
@@ -71,41 +42,70 @@ def get_random_color() -> discord.Colour:
     )
 
 
-def resource_path(*parts: str) -> Path:
-    """Build an absolute path inside the resources directory"""
-    return RESOURCES_DIR.joinpath(*parts)
+async def timezone_autocomplete(
+    interaction: discord.Interaction, current: str
+) -> list[discord.app_commands.Choice[str]]:
+    """Autocomplete function for timezones"""
+
+    timezones = zoneinfo.available_timezones()
+    choices: list[discord.app_commands.Choice[str]] = []
+    for tz in timezones:
+        if current.lower() in tz.lower():
+            choices.append(discord.app_commands.Choice(name=tz, value=tz))
+        if len(choices) >= 25:
+            break
+    return choices
 
 
-def get_win_status(choice_bot: str, choice_user: str) -> RpsResult:
-    """Determine RPS game result"""
-    if choice_bot == "r":
-        if choice_user == "r":
-            return RpsResult.TIE
-        elif choice_user == "p":
-            return RpsResult.USER_WIN
-        elif choice_user == "s":
-            return RpsResult.BOT_WIN
-    elif choice_bot == "p":
-        if choice_user == "r":
-            return RpsResult.BOT_WIN
-        elif choice_user == "p":
-            return RpsResult.TIE
-        elif choice_user == "s":
-            return RpsResult.USER_WIN
-    elif choice_bot == "s":
-        if choice_user == "r":
-            return RpsResult.USER_WIN
-        elif choice_user == "p":
-            return RpsResult.BOT_WIN
-        elif choice_user == "s":
-            return RpsResult.TIE
-    return RpsResult.ERROR
+# --------------------------------------------------------------------------
+# /help
+# The help categories are the app_commands.Groups registered by the cogs, so
+# everything here reads them off the command tree. There is no second list
+# to keep in sync, and the order is whatever discord.py registered.
+# --------------------------------------------------------------------------
 
 
-def get_choice_name(choice: str) -> str:
-    """Get full name of RPS choice"""
-    choices = {"r": "Rock", "p": "Paper", "s": "Scissors"}
-    return choices.get(choice, "Unknown")
+def help_groups(bot: commands.Bot) -> list[app_commands.Group]:
+    """The registered help categories, in the order Discord lists them."""
+    return [
+        command
+        for command in bot.tree.get_commands()
+        if isinstance(command, app_commands.Group)
+    ]
+
+
+def help_group(bot: commands.Bot, name: str) -> app_commands.Group | None:
+    """Look up one category by name, or None if there is no such group."""
+    wanted = name.strip().lower()
+    return next((group for group in help_groups(bot) if group.name == wanted), None)
+
+
+def help_category_embed(group: app_commands.Group) -> discord.Embed:
+    """Build the help embed for one category, listing its commands."""
+    embed = discord.Embed(
+        title=f"Maxis {group.name.title()} commands:-",
+        color=get_random_color(),
+    )
+
+    for command in group.commands:
+        if not isinstance(command, app_commands.Command):
+            continue
+        params = "".join(f" ({param.name})" for param in command.parameters)
+        embed.add_field(
+            name=f"/{command.qualified_name}{params}",
+            value=command.description or "No description.",
+            inline=True,
+        )
+        if len(embed.fields) >= global_state.MAX_HELP_FIELDS:
+            break
+
+    return embed
+
+
+# --------------------------------------------------------------------------
+# Random
+# Shared random choices and numbers.
+# --------------------------------------------------------------------------
 
 
 def get_random_integer(max_inclusive: int, min_inclusive: int) -> int:
@@ -118,825 +118,6 @@ def get_random_integer(max_inclusive: int, min_inclusive: int) -> int:
     return val
 
 
-def generate_pattern():
-    """Generate a number pattern question"""
-    pattern_multiplier = random.randint(1, 3)
-    pattern_adder = random.randint(1, 8)
-    current = 0
-    pattern: list[int] = []
-
-    for i in range(1, 10):
-        current += (pattern_multiplier * i) + pattern_adder
-        pattern.append(current)
-
-    question = "n(i) = n(i - 1) + (i * m) + a, find n(10):"
-    answer = current + (pattern_multiplier * 10) + pattern_adder
-
-    return question, ", ".join(map(str, pattern)), answer
-
-
-def solve_expression(expr: str) -> ExpressionResult:
-    """Evaluate a mathematical expression"""
-    try:
-        # Check for invalid characters
-        if not all(c.isdigit() or c in "+-*/%^(). " for c in expr):
-            return ExpressionResult(
-                success=False, error="Invalid characters in expression"
-            )
-
-        # Check for mismatched parentheses
-        if expr.count("(") != expr.count(")"):
-            return ExpressionResult(
-                success=False, error="Mismatched parentheses in expression"
-            )
-
-        # P in PEMDAS
-        if expr.count("(") > 0:
-            # We will check for valid opening and closing parentheses then recursively pass smaller expression
-            parentheses_groups = _get_top_parentheses_groups(expr)
-            for group in parentheses_groups:
-                group_result = solve_expression(group)
-                if not group_result.success:
-                    return group_result
-                # Replace the parentheses group with its result in the original expression
-                expr = expr.replace(f"({group})", str(group_result.result), 1)
-            # A no-parentheses combinational sub-end portion
-            return solve_expression(expr)
-        else:
-            # A no-parentheses end portion
-            expr = expr.replace(" ", "")  # Sanitise spaces
-            operators: list[str] = [c for c in expr if c in "+-*/%^"]
-            # A robust regular expression for finding decimals and integers
-            # Pattern explanation:
-            # \d*\.\d+|\d+\.? : matches numbers with or without decimals
-            operands: list[Decimal] = [
-                Decimal(c) for c in re.findall(r"\d*\.\d+|\d+\.?", expr)
-            ]
-
-            # Handle leading negative numbers and negative numbers after operators
-            i = 0
-            sampledExprForRealtimeUpdates = expr
-            while i < len(operators):
-                op = operators[i]
-                if op == "-":
-                    nthMinus = operators[:i].count("-")
-                    allMinusIndexes = [
-                        i
-                        for i, c in enumerate(sampledExprForRealtimeUpdates)
-                        if c == "-"
-                    ]
-                    indexOfThisMinus = allMinusIndexes[nthMinus]
-                    if (
-                        indexOfThisMinus > 0
-                        and sampledExprForRealtimeUpdates[indexOfThisMinus - 1]
-                        in "+-*/%^"
-                    ):
-                        operands[i] = -operands[i]  # Handle negative after operator
-                        operators.pop(i)  # Remove negative for the number
-                        sampledExprForRealtimeUpdates = (
-                            sampledExprForRealtimeUpdates[:indexOfThisMinus]
-                            + sampledExprForRealtimeUpdates[indexOfThisMinus + 1 :]
-                        )  # Remove the minus from the sampled expression for accurate indexing
-                        # No increment when pop because in-place shift
-                    elif indexOfThisMinus == 0:
-                        operands[i] = -operands[i]  # Handle first/lone leading negative
-                        operators.pop(i)  # Remove negative for the number
-                        sampledExprForRealtimeUpdates = sampledExprForRealtimeUpdates[
-                            1:
-                        ]  # Remove the minus from the sampled expression for accurate indexing
-                        # No increment when pop because in-place shift
-                    else:
-                        i += 1  # Normal subtraction operator, move to next
-                else:
-                    i += 1  # Not a minus operator, move to next
-
-            if len(operators) + 1 != len(operands):
-                return ExpressionResult(
-                    success=False, error="Invalid expression format"
-                )
-            if len(operators) == 0 and len(operands) == 1:
-                return ExpressionResult(
-                    success=True, result=operands[0]
-                )  # Single number expression
-
-            # EMD in PEMDAS
-            i = 0
-            while i < len(operators):
-                op = operators[i]
-                if op == "*":
-                    operands[i] = operands[i] * operands[i + 1]
-                    operands.pop(i + 1)
-                    operators.pop(i)
-                elif op == "/":
-                    operands[i] = operands[i] / operands[i + 1]
-                    operands.pop(i + 1)
-                    operators.pop(i)
-                elif op == "%":
-                    operands[i] = operands[i] % operands[i + 1]
-                    operands.pop(i + 1)
-                    operators.pop(i)
-                elif op == "^":
-                    operands[i] = operands[i] ** operands[i + 1]
-                    operands.pop(i + 1)
-                    operators.pop(i)
-                else:
-                    i += 1  # No increment when pop because in-place shift, increment when skip
-
-            if len(operators) == 0 and len(operands) == 1:
-                return ExpressionResult(
-                    success=True, result=operands[0]
-                )  # Single number expression after EMD
-
-            # AS in PEMDAS
-            i = 0
-            while i < len(operators):
-                op = operators[i]
-                if op == "+":
-                    operands[i] = operands[i] + operands[i + 1]
-                    operands.pop(i + 1)
-                    operators.pop(i)
-                elif op == "-":
-                    operands[i] = operands[i] - operands[i + 1]
-                    operands.pop(i + 1)
-                    operators.pop(i)
-                else:
-                    i += 1  # No increment when pop because in-place shift, increment when skip
-
-            return ExpressionResult(success=True, result=operands[0])
-    except Exception as e:
-        return ExpressionResult(success=False, error=str(e))
-
-
-def _get_top_parentheses_groups(expr: str) -> list[str]:
-    """Get top-level parentheses groups in an expression"""
-    groups: list[str] = []
-    stack: list[int] = []
-    for i, char in enumerate(expr):
-        if char == "(":
-            stack.append(i)
-        elif char == ")" and stack:
-            start = stack.pop()
-            if not stack:  # Only consider top-level groups
-                groups.append(
-                    expr[(start + 1) : i]
-                )  # Remove parentheses from group (exclusive selection)
-    return groups
-
-
 def get_random_work() -> str:
     """Get a random work message"""
-    return random.choice(WORKS)
-
-
-def ttt_check_terminal_state(board: list[list[str]]) -> bool:
-    """Check if the Tic Tac Toe board is in a terminal state (win or tie)"""
-    # Check rows and columns
-    for i in range(3):
-        if board[i][0] == board[i][1] == board[i][2] != "":
-            return True
-        if board[0][i] == board[1][i] == board[2][i] != "":
-            return True
-    # Check diagonals
-    if board[0][0] == board[1][1] == board[2][2] != "":
-        return True
-    if board[0][2] == board[1][1] == board[2][0] != "":
-        return True
-    # Check for tie (no empty spaces)
-    if all(board[r][c] != "" for r in range(3) for c in range(3)):
-        return True
-    return False
-
-
-def ttt_get_terminal_state_value(board: list[list[str]]) -> int:
-    """Get the value of a terminal Tic Tac Toe board state (1 for X win, -1 for O win, 0 for tie)"""
-    # Check rows and columns
-    for i in range(3):
-        if board[i][0] == board[i][1] == board[i][2] != "":
-            return 1 if board[i][0] == "X" else -1
-        if board[0][i] == board[1][i] == board[2][i] != "":
-            return 1 if board[0][i] == "X" else -1
-    # Check diagonals
-    if board[0][0] == board[1][1] == board[2][2] != "":
-        return 1 if board[0][0] == "X" else -1
-    if board[0][2] == board[1][1] == board[2][0] != "":
-        return 1 if board[0][2] == "X" else -1
-    # Tie or non-terminal state
-    return 0
-
-
-def ttt_get_whose_turn_now(board: list[list[str]]) -> str:
-    """Get whose turn it is in the current Tic Tac Toe board state (X or O)"""
-    x_count = sum(row.count("X") for row in board)
-    o_count = sum(row.count("O") for row in board)
-    return "X" if x_count == o_count else "O"
-
-
-def ttt_get_possible_moves_in_turn(board: list[list[str]]) -> list[tuple[int, int]]:
-    possible_moves: list[tuple[int, int]] = []
-    for r in range(3):
-        for c in range(3):
-            if board[r][c] == "":
-                possible_moves.append((r, c))
-    return possible_moves
-
-
-def ttt_get_state_after_move(
-    board: list[list[str]], move: tuple[int, int]
-) -> list[list[str]]:
-    new_board = [row.copy() for row in board]
-    r, c = move
-    new_board[r][c] = ttt_get_whose_turn_now(board)
-    return new_board
-
-
-def ttt_minimax(board: list[list[str]], alpha: float, beta: float) -> int:
-    """Minimax algorithm with alpha-beta pruning for Tic Tac Toe"""
-    if ttt_check_terminal_state(board):
-        return ttt_get_terminal_state_value(board)
-
-    whose_turn = ttt_get_whose_turn_now(board)
-    if whose_turn == "X":  # Maximizing player
-        best_score = float("-inf")
-        for move in ttt_get_possible_moves_in_turn(board):
-            score = ttt_minimax(ttt_get_state_after_move(board, move), alpha, beta)
-            best_score = max(score, best_score)
-            alpha = max(alpha, best_score)
-            if beta <= alpha:
-                break
-        return int(best_score)
-    else:  # Minimizing player
-        best_score = float("inf")
-        for move in ttt_get_possible_moves_in_turn(board):
-            score = ttt_minimax(ttt_get_state_after_move(board, move), alpha, beta)
-            best_score = min(score, best_score)
-            beta = min(beta, best_score)
-            if beta <= alpha:
-                break
-        return int(best_score)
-
-
-async def timezone_autocomplete(
-    interaction: discord.Interaction, current: str
-) -> list[discord.app_commands.Choice[str]]:
-    """Autocomplete function for timezones"""
-    import zoneinfo
-
-    timezones = zoneinfo.available_timezones()
-    choices: list[discord.app_commands.Choice[str]] = []
-    for tz in timezones:
-        if current.lower() in tz.lower():
-            choices.append(discord.app_commands.Choice(name=tz, value=tz))
-        if len(choices) >= 25:
-            break
-    return choices
-
-
-def refresh_replies(connstr: str):
-    """Refresh custom replies in database"""
-
-    def refresh():
-        try:
-
-            class ReplyDoc(TypedDict):
-                name: str
-                key: list[str]
-                val: list[str]
-
-            client = pymongo.MongoClient[ReplyDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            doc: ReplyDoc = {
-                "name": "reply",
-                "key": list(custom_replies.keys()),
-                "val": list(custom_replies.values()),
-            }
-
-            if collection.count_documents({"name": "reply"}) > 0:
-                collection.replace_one({"name": "reply"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing replies: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_user_settings(connstr: str, user_settings_map: Dict[int, UserSettings]):
-    """Refresh user settings in database"""
-
-    def refresh():
-        try:
-
-            class UserSettingsDocValue(TypedDict):
-                dm: bool
-                passive: bool
-
-            class UserSettingsDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[UserSettingsDocValue]
-
-            client = pymongo.MongoClient[UserSettingsDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            settings_list: list[UserSettingsDocValue] = []
-            for user_settings in user_settings_map.values():
-                settings_list.append(
-                    {
-                        "dm": user_settings.bank_dm_enabled,
-                        "passive": user_settings.bank_passive_enabled,
-                    }
-                )
-
-            doc: UserSettingsDoc = {
-                "name": "usersettings",
-                "key": list(user_settings_map.keys()),
-                "val": settings_list,
-            }
-
-            if collection.count_documents({"name": "usersettings"}) > 0:
-                collection.replace_one({"name": "usersettings"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing user settings: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_balances(connstr: str):
-    """Refresh balances in database"""
-
-    def refresh():
-        try:
-
-            class BalanceDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[int]
-
-            client = pymongo.MongoClient[BalanceDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            doc: BalanceDoc = {
-                "name": "balance",
-                "key": list(balance_map.keys()),
-                "val": list(balance_map.values()),
-            }
-
-            if collection.count_documents({"name": "balance"}) > 0:
-                collection.replace_one({"name": "balance"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing balances: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_works(connstr: str, user_worked_times: Dict[int, datetime]):
-    """Refresh work times in database"""
-
-    def refresh():
-        try:
-
-            class WorkDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[datetime]
-
-            client = pymongo.MongoClient[WorkDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            dates = [dt for dt in user_worked_times.values()]
-            doc: WorkDoc = {
-                "name": "work",
-                "key": list(user_worked_times.keys()),
-                "val": dates,
-            }
-
-            if collection.count_documents({"name": "work"}) > 0:
-                collection.replace_one({"name": "work"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing works: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_robs(connstr: str, user_robbed_times: Dict[int, datetime]):
-    """Refresh rob times in database"""
-
-    def refresh():
-        try:
-
-            class RobDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[datetime]
-
-            client = pymongo.MongoClient[RobDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            dates = [dt for dt in user_robbed_times.values()]
-            doc: RobDoc = {
-                "name": "rob",
-                "key": list(user_robbed_times.keys()),
-                "val": dates,
-            }
-
-            if collection.count_documents({"name": "rob"}) > 0:
-                collection.replace_one({"name": "rob"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing robs: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_dailies(connstr: str, user_daily_times: Dict[int, datetime]):
-    """Refresh daily times in database"""
-
-    def refresh():
-        try:
-
-            class DailyDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[datetime]
-
-            client = pymongo.MongoClient[DailyDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            dates = [dt for dt in user_daily_times.values()]
-            doc: DailyDoc = {
-                "name": "daily",
-                "key": list(user_daily_times.keys()),
-                "val": dates,
-            }
-
-            if collection.count_documents({"name": "daily"}) > 0:
-                collection.replace_one({"name": "daily"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing dailies: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_weeklies(connstr: str, user_weekly_times: Dict[int, datetime]):
-    """Refresh weekly times in database"""
-
-    def refresh():
-        try:
-
-            class WeeklyDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[datetime]
-
-            client = pymongo.MongoClient[WeeklyDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            dates = [dt for dt in user_weekly_times.values()]
-            doc: WeeklyDoc = {
-                "name": "weekly",
-                "key": list(user_weekly_times.keys()),
-                "val": dates,
-            }
-
-            if collection.count_documents({"name": "weekly"}) > 0:
-                collection.replace_one({"name": "weekly"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing weeklies: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_monthlies(connstr: str, user_monthly_times: Dict[int, datetime]):
-    """Refresh monthly times in database"""
-
-    def refresh():
-        try:
-
-            class MonthlyDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[datetime]
-
-            client = pymongo.MongoClient[MonthlyDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            dates = [dt for dt in user_monthly_times.values()]
-            doc: MonthlyDoc = {
-                "name": "monthly",
-                "key": list(user_monthly_times.keys()),
-                "val": dates,
-            }
-
-            if collection.count_documents({"name": "monthly"}) > 0:
-                collection.replace_one({"name": "monthly"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing monthlies: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-def refresh_warns(connstr: str):
-    """Refresh warns in database"""
-
-    def refresh():
-        try:
-
-            class WarnDocValueValue(TypedDict):
-                id: int
-                warns: int
-                causes: list[str]
-
-            class WarnDocValue(TypedDict):
-                key: list[int]
-                val: list[WarnDocValueValue]
-
-            class WarnDoc(TypedDict):
-                name: str
-                key: list[int]
-                val: list[WarnDocValue]
-
-            client = pymongo.MongoClient[WarnDoc](connstr)
-            db = client["UnknownDatabase"]
-            collection = db["UnknownCollection"]
-
-            values: list[WarnDocValue] = []
-            for map_val in warn_map.values():
-                warns: list[WarnDocValueValue] = []
-                for warn in map_val.values():
-                    warns.append(
-                        {
-                            "id": warn.user_id,
-                            "warns": warn.warns,
-                            "causes": warn.warn_causes,
-                        }
-                    )
-                values.append({"key": list(map_val.keys()), "val": warns})
-
-            doc: WarnDoc = {"name": "warn", "key": list(warn_map.keys()), "val": values}
-
-            if collection.count_documents({"name": "warn"}) > 0:
-                collection.replace_one({"name": "warn"}, doc)
-            else:
-                collection.insert_one(doc)
-            client.close()
-        except Exception as e:
-            print(f"Error refreshing warns: {e}")
-
-    import threading
-
-    threading.Thread(target=refresh, daemon=True).start()
-
-
-async def credit_balance(
-    credit_amount: int,
-    interaction: discord.Interaction,
-    connstr: str,
-    user_settings_map: Dict[int, UserSettings],
-    balance_map: Dict[int, int],
-) -> bool:
-    """Credit balance to user's account"""
-    if interaction.user.id not in balance_map:
-        balance_map[interaction.user.id] = 0
-        refresh_balances(connstr)
-
-    old_bal = balance_map[interaction.user.id]
-    if credit_amount > 0:
-        new_bal = old_bal + credit_amount
-        balance_map[interaction.user.id] = new_bal
-
-        if (
-            interaction.user.id in user_settings_map
-            and user_settings_map[interaction.user.id].bank_dm_enabled
-        ):
-            try:
-                embed = discord.Embed(
-                    title="Successfully updated account! Details:-",
-                    color=get_random_color(),
-                )
-                embed.add_field(name="Opening Balance", value=f":coin: {old_bal}")
-                embed.add_field(name="Deposited", value=f":coin: {credit_amount}")
-                embed.add_field(name="Closing Balance", value=f":coin: {new_bal}")
-                await interaction.user.send(embed=embed)
-            except Exception as e:
-                print(f"Error sending DM: {e}")
-
-        refresh_balances(connstr)
-        return True
-    else:
-        embed = discord.Embed(
-            title="Error!",
-            description="Value should be more than 0.",
-            color=get_random_color(),
-        )
-        await interaction.response.send_message(embed=embed)
-    return False
-
-
-async def credit_balance_for_different_user(
-    credit_amount: int,
-    user: discord.User,
-    interaction: discord.Interaction,
-    connstr: str,
-    user_settings_map: Dict[int, UserSettings],
-    balance_map: Dict[int, int],
-) -> bool:
-    """Credit balance to user's account"""
-    if user.id not in balance_map:
-        balance_map[user.id] = 0
-        refresh_balances(connstr)
-
-    old_bal = balance_map[user.id]
-    if credit_amount > 0:
-        new_bal = old_bal + credit_amount
-        balance_map[user.id] = new_bal
-
-        if user.id in user_settings_map and user_settings_map[user.id].bank_dm_enabled:
-            try:
-                embed = discord.Embed(
-                    title="Successfully updated account! Details:-",
-                    color=get_random_color(),
-                )
-                embed.add_field(name="Opening Balance", value=f":coin: {old_bal}")
-                embed.add_field(name="Deposited", value=f":coin: {credit_amount}")
-                embed.add_field(name="Closing Balance", value=f":coin: {new_bal}")
-                await user.send(embed=embed)
-            except Exception as e:
-                print(f"Error sending DM: {e}")
-
-        refresh_balances(connstr)
-        return True
-    else:
-        embed = discord.Embed(
-            title="Error!",
-            description="Value should be more than 0.",
-            color=get_random_color(),
-        )
-        await interaction.response.send_message(embed=embed)
-    return False
-
-
-async def debit_balance(
-    debit_amount: int,
-    interaction: discord.Interaction,
-    connstr: str,
-    user_settings_map: Dict[int, UserSettings],
-    balance_map: Dict[int, int],
-) -> bool:
-    """Debit balance from user's account"""
-    if interaction.user.id not in balance_map:
-        balance_map[interaction.user.id] = 0
-        refresh_balances(connstr)
-
-    old_bal = balance_map[interaction.user.id]
-    if debit_amount > 0:
-        if debit_amount <= old_bal:
-            new_bal = old_bal - debit_amount
-            balance_map[interaction.user.id] = new_bal
-
-            if (
-                interaction.user.id in user_settings_map
-                and user_settings_map[interaction.user.id].bank_dm_enabled
-            ):
-                try:
-                    embed = discord.Embed(
-                        title="Successfully updated account! Details:-",
-                        color=get_random_color(),
-                    )
-                    embed.add_field(name="Opening Balance", value=f":coin: {old_bal}")
-                    embed.add_field(name="Withdrawn", value=f":coin: {debit_amount}")
-                    embed.add_field(name="Closing Balance", value=f":coin: {new_bal}")
-                    await interaction.user.send(embed=embed)
-                except Exception as e:
-                    print(f"Error sending DM: {e}")
-
-            refresh_balances(connstr)
-            return True
-        elif old_bal == 0:
-            embed = discord.Embed(
-                title="Error!",
-                description="You can't withdraw, because you have no money!",
-                color=get_random_color(),
-            )
-            await interaction.response.send_message(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Error!",
-                description="You can't withdraw more than you have in your bank!",
-                color=get_random_color(),
-            )
-            await interaction.response.send_message(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="Error!",
-            description="Value should be more than 0.",
-            color=get_random_color(),
-        )
-        await interaction.response.send_message(embed=embed)
-    return False
-
-
-async def debit_balance_for_different_user(
-    debit_amount: int,
-    user: discord.User,
-    interaction: discord.Interaction,
-    connstr: str,
-    user_settings_map: Dict[int, UserSettings],
-    balance_map: Dict[int, int],
-) -> bool:
-    """Debit balance from user's account"""
-    if user.id not in balance_map:
-        balance_map[user.id] = 0
-        refresh_balances(connstr)
-
-    old_bal = balance_map[user.id]
-    if debit_amount > 0:
-        if debit_amount <= old_bal:
-            new_bal = old_bal - debit_amount
-            balance_map[user.id] = new_bal
-
-            if (
-                user.id in user_settings_map
-                and user_settings_map[user.id].bank_dm_enabled
-            ):
-                try:
-                    embed = discord.Embed(
-                        title="Successfully updated account! Details:-",
-                        color=get_random_color(),
-                    )
-                    embed.add_field(name="Opening Balance", value=f":coin: {old_bal}")
-                    embed.add_field(name="Withdrawn", value=f":coin: {debit_amount}")
-                    embed.add_field(name="Closing Balance", value=f":coin: {new_bal}")
-                    await user.send(embed=embed)
-                except Exception as e:
-                    print(f"Error sending DM: {e}")
-
-            refresh_balances(connstr)
-            return True
-        elif old_bal == 0:
-            embed = discord.Embed(
-                title="Error!",
-                description="He can't withdraw, because he has no money!",
-                color=get_random_color(),
-            )
-            await interaction.response.send_message(embed=embed)
-        else:
-            embed = discord.Embed(
-                title="Error!",
-                description="He can't withdraw more than he has in his bank!",
-                color=get_random_color(),
-            )
-            await interaction.response.send_message(embed=embed)
-    else:
-        embed = discord.Embed(
-            title="Error!",
-            description="Value should be more than 0.",
-            color=get_random_color(),
-        )
-        await interaction.response.send_message(embed=embed)
-    return False
+    return random.choice(global_state.WORKS)

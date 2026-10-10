@@ -1,15 +1,23 @@
 """
 Unified slash command setup
+
+Each category of slash commands lives in its own `GroupCog`, which registers as
+an `app_commands.Group` on the tree. That is what lets `/utility help`
+discover the categories and their commands straight from the tree.
 """
 
 from discord.ext import commands
 
+from bot.commands.economy_commands import Economy
+from bot.commands.image_commands import Image
+from bot.commands.moderation_commands import Moderation
+from bot.commands.utility_commands import Utility
 
-def setup_slash_commands(bot: commands.Bot):
-    """Setup all slash commands"""
-    # Import lazily to avoid circular imports when bot.main loads this module
-    from bot.commands import basic_commands, currency_commands, mod_commands
+# Registration order here is the order groups appear in Discord's command list.
+COGS = (Utility, Moderation, Economy, Image)
 
-    basic_commands.setup_basic_commands(bot)
-    currency_commands.setup_currency_commands(bot)
-    mod_commands.setup_mod_commands(bot)
+
+async def setup_slash_commands(bot: commands.Bot):
+    """Register every command cog with the bot."""
+    for cog_class in COGS:
+        await bot.add_cog(cog_class())

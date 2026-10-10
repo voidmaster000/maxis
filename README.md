@@ -4,8 +4,8 @@
 
 # Maxis - Discord Bot
 
-[![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)](https://www.python.org/downloads/)
-[![discord.py](https://img.shields.io/badge/discord.py-2.0+-blue.svg)](https://github.com/Rapptz/discord.py)
+[![Python](https://img.shields.io/badge/Python-3.13-blue.svg)](https://www.python.org/downloads/)
+[![discord.py](https://img.shields.io/badge/discord.py-2.7-blue.svg)](https://github.com/Rapptz/discord.py)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, moderation, utility, and interactive features.. This bot is the successor to [UnknownBot-latest](https://github.com/UnknownCoder56/UnknownBot-latest), providing improved functionality and modern slash command support.
@@ -20,9 +20,8 @@ Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, mode
 - Math expression calculator
 - Text-to-image generation (`Pillow`)
 - Currency conversion via ExchangeRate API
-- Color generation tools (`/makecolor`, `/randomcolor`)
+- Color generation tools (`/image makecolor`, `/image randomcolor`)
 - Rock-Paper-Scissors (choice or interactive buttons)
-- ADMES query command + owner tunnel URL command
 
 ### Economy
 
@@ -39,14 +38,28 @@ Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, mode
 - Warn, clearwarns, getwarns
 - Clear messages and channel nuke
 
-### Web + ADMES
+### Web
 
 - FastAPI web server (`/`) showing online status + invite button
-- ADMES client that posts questions to remote bridge and polls answers
+
+## Development
+
+```bash
+python -m venv venv
+.\venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
+
+.\venv\Scripts\python.exe -m ruff check   # lint (config in pyproject.toml)
+.\venv\Scripts\python.exe -m pyright       # type check
+```
+
+`pyproject.toml` points `pyright` and `ruff` at `./venv`, so both resolve the
+same discord.py the bot actually runs against rather than any other install on
+the machine. `requirements.txt` is pinned to the versions in `./venv`;
+`requirements-dev.txt` pins the two tools above.
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.13+
 - MongoDB instance
 - Discord bot token
 
@@ -65,7 +78,6 @@ TOKEN=your_discord_bot_token
 CONNSTR=your_mongodb_connection_string
 PORT=8080
 EXAPI=your_exchange_rate_api_key
-OWNER_USER_ID=(your user id)
 ```
 
 ### Environment Variables
@@ -74,7 +86,6 @@ OWNER_USER_ID=(your user id)
 - `CONNSTR` (required): MongoDB connection string
 - `PORT` (optional, default `8080`): FastAPI web server port
 - `EXAPI` (optional but required for `/currconv`): ExchangeRate API key
-- `OWNER_USER_ID` (optional, default set in code): owner-only access for `/admes_tunnel`
 
 ## Run
 
@@ -85,58 +96,63 @@ python -m bot.main
 
 ## Commands
 
-### Utility Commands
+Every command is invoked as `/<category> <command>`; see
+[Command layout](#command-layout) for why.
 
-- `/ping`
-- `/hello`
-- `/datetime`
-- `/help [category]`
-- `/replies`
-- `/botinfo`
-- `/userinfo [user]`
-- `/serverinfo`
-- `/admes <query>`
-- `/admes_tunnel [url]` (owner only)
-- `/makefile <filename> <content>`
-- `/calculate <expression>`
-- `/reply <text> <reply>`
-- `/noreply <text>`
-- `/dm <user> <message>`
-- `/rps [choice]`
-- `/tti <text>`
-- `/setting <type> <value>`
-- `/currconv <amount> <from_currency> <to_currency>`
-- `/makecolor <red> <green> <blue>`
-- `/randomcolor`
+### `/utility`
 
-### Economy Commands
+- `/utility ping`
+- `/utility hello`
+- `/utility datetime [timezone]`
+- `/utility help [category]`
+- `/utility replies`
+- `/utility botinfo`
+- `/utility userinfo [user]`
+- `/utility serverinfo`
+- `/utility makefile <filename> <content>`
+- `/utility calculate <expression>`
+- `/utility reply <text> <reply>`
+- `/utility noreply <text>`
+- `/utility dm <user> <message>`
+- `/utility rps [choice]`
+- `/utility setting <type> <value>`
+- `/utility currconv <amount> <from_currency> <to_currency>`
+- `/utility ttt`
 
-- `/balance [user]`
-- `/daily`
-- `/weekly`
-- `/monthly`
-- `/work`
-- `/rob <user>`
-- `/give <user> <amount>`
-- `/leaderboard`
-- `/globalleaderboard`
-- `/inventory`
-- `/shop [item]`
-- `/buy <item>`
-- `/use <item>`
+### `/moderation`
 
-### Moderation Commands
+- `/moderation kick <user> [reason]`
+- `/moderation ban <user> [reason]`
+- `/moderation unban <user>`
+- `/moderation mute <user>`
+- `/moderation unmute <user>`
+- `/moderation warn <user> <cause>`
+- `/moderation clearwarns <user>`
+- `/moderation getwarns <user>`
+- `/moderation clear <amount>`
+- `/moderation nuke`
 
-- `/kick <user> [reason]`
-- `/ban <user> [reason]`
-- `/unban <user>`
-- `/mute <user>`
-- `/unmute <user>`
-- `/warn <user> <cause>`
-- `/clearwarns <user>`
-- `/getwarns <user>`
-- `/clear <amount>`
-- `/nuke`
+### `/economy`
+
+- `/economy balance [user]`
+- `/economy daily`
+- `/economy weekly`
+- `/economy monthly`
+- `/economy work`
+- `/economy rob <user>`
+- `/economy give <user> <amount>`
+- `/economy leaderboard`
+- `/economy globalleaderboard`
+- `/economy inventory`
+- `/economy shop [item]`
+- `/economy buy <item>`
+- `/economy use <item>`
+
+### `/image`
+
+- `/image tti <text>`
+- `/image makecolor <red> <green> <blue>`
+- `/image randomcolor`
 
 ## Shop Items (Current)
 
@@ -167,30 +183,62 @@ Documents are keyed by `name` (e.g., `balance`, `warn`, `item`, `reply`, `userse
 ```text
 maxis/
 ├── bot/
-│   ├── main.py
-│   ├── slash_commands.py
-│   ├── helper.py
-│   ├── components.py
-│   ├── modals.py
-│   ├── web_server.py
-│   ├── admes_server.py
+│   ├── main.py               # wiring + the FastAPI status page
+│   ├── global_state.py       # every constant + all mutable runtime state
+│   ├── database_sync.py      # syncs global_state to MongoDB
+│   ├── slash_commands.py     # registers the cogs
+│   ├── transactions.py       # credit / debit
+│   ├── helper.py             # pure shared helpers + /help rendering
+│   ├── components_listener.py
+│   ├── modals_listener.py
 │   ├── commands/
-│   │   ├── basic_commands.py
-│   │   ├── currency_commands.py
-│   │   └── mod_commands.py
+│   │   ├── utility_commands.py       # /utility (and /help)
+│   │   ├── economy_commands.py       # /economy
+│   │   ├── moderation_commands.py    # /moderation
+│   │   └── image_commands.py         # /image
 │   └── objects/
-│       ├── shop.py
-│       ├── nitro.py
-│       ├── hacker_laptop.py
+│       ├── shop.py             # the catalogue and its lookups
+│       ├── hacker_laptop.py    # the laptop item and its command history
+│       ├── nitro.py            # the nitro cooldown boost
+│       ├── tictactoe.py        # the /utility ttt game
+│       ├── rps.py              # the /utility rps game
+│       ├── calculator.py       # the /utility calculate evaluator
 │       ├── user_settings.py
 │       └── warn.py
 ├── resources/
-│   ├── commands.json
 │   ├── currencies.json
 │   ├── index.html
+│   ├── Inter-SemiBold.ttf
 │   └── public/
-└── requirements.txt
+├── requirements.txt
+├── requirements-dev.txt
+└── pyproject.toml          # pyright + ruff configuration
 ```
+
+### Data flow
+
+`global_state` is the single source of truth for both configuration and data:
+
+- **Constants** — env config, paths, cooldowns, DB names, tuning values and the
+  reference data (`WORKS`, `CURRENCIES`). Nothing else reads an environment
+  variable or defines a module-level constant, apart from `COGS` in
+  `slash_commands.py` and the discord `Choice` objects built for a command's own
+  decorator.
+- **Runtime data** — the mutable collections the cogs share. `database_sync`
+  loads it at startup and is the only module that talks to MongoDB, so cogs
+  read `global_state`, mutate it, and call a `database_sync.save_*()`.
+  Balance changes go through `credit` / `debit` in `transactions.py`.
+
+### Command layout
+
+Each category is a `commands.GroupCog`, which registers as an `app_commands.Group`
+on the tree. Commands are therefore invoked as `/<category> <command>`
+(e.g. `/utility ping`, `/economy daily`, `/moderation ban`, `/image makecolor`).
+
+Because the grouping is done by discord.py itself, `/help` has no hand-maintained
+command list: `help_groups()` / `help_category_embed()` in `helper.py` read the
+registered groups straight off the command tree. Category order is whatever
+discord.py registered, and there is no second list that can drift.
 
 ## License
 

@@ -1,12 +1,15 @@
 """
-Command handlers for Maxis
+Command cogs for Maxis.
+
+One `GroupCog` per help category, which registers as an `app_commands.Group` so
+commands are invoked as `/<category> <command>`:
+
+    utility_commands    -> /utility
+    moderation_commands -> /moderation
+    economy_commands    -> /economy
+    image_commands      -> /image
+
+`slash_commands.COGS` decides the order they are added to the tree, and
+`/help` reads the registered groups back off it. Nothing imports these from the
+package itself, so the cogs are left to be imported by module.
 """
-
-from typing import TYPE_CHECKING
-
-# Imports are intentionally omitted at runtime to avoid circular imports with bot.main.
-# They are only imported for type checkers so __all__ remains accurate for tooling.
-if TYPE_CHECKING:  # pragma: no cover
-    from bot.commands import basic_commands, currency_commands, mod_commands
-
-__all__ = ["basic_commands", "currency_commands", "mod_commands"]

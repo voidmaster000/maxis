@@ -2,27 +2,22 @@
 Modal submission handlers
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import discord
-from bot.helper import get_random_color, credit_balance, debit_balance, generate_pattern
-from bot.objects.shop import Shop
-from bot.objects.hacker_laptop import (
-    format_user_cmd_history,
-    append_user_cmd_history,
-    get_last_user_cmd,
-)
 
-PRIZE_OR_COST = 9000
-
-
-def _get_main():
-    """Lazy import Main to avoid circular imports with bot.main."""
-    from bot.main import Main  # type: ignore
-
-    return Main
+from bot import global_state
+from bot.helper import get_random_color
+from bot.objects.hacker_laptop import HackerLaptop, LaptopHistory
+from bot.transactions import credit, debit
 
 
 class ModalsListener:
+    @staticmethod
+    async def _defer_error(interaction: discord.Interaction, message: str):
+        """Defer the modal, then tell the user what went wrong, privately."""
+        await ModalsListener._defer_error(interaction, message)
+
     @staticmethod
     async def on_modal_submit(interaction: discord.Interaction):
         """Handle modal submissions"""
@@ -43,8 +38,7 @@ class ModalsListener:
         secret3: int | None = None,
     ):
         """Append a command entry to persistent history file."""
-        append_user_cmd_history(
-            user_id,
+        LaptopHistory(user_id).append(
             command,
             result,
             secret1=secret1,
@@ -61,18 +55,8 @@ class ModalsListener:
         """Refresh command history in original laptop message."""
         try:
             if not shutdown:
-                updated = discord.Embed(
-                    title=f"{interaction.user.display_name}'s PC",
-                    color=get_random_color(),
-                )
-                updated.add_field(name="OS", value="MaxisOS")
-                updated.add_field(name="VPN Status", value="Connected to MaxisVPN")
-                updated.add_field(
-                    name="Command History",
-                    value=format_user_cmd_history(user_id),
-                    inline=False,
-                )
-                await interaction.response.edit_message(embed=updated)
+                laptop = HackerLaptop(user_id, interaction.user.display_name)
+                await interaction.response.edit_message(embed=laptop.screen())
             else:
                 await interaction.response.edit_message(
                     embed=discord.Embed(
@@ -99,15 +83,7 @@ class ModalsListener:
             owner_id = int(user_id_raw)
 
             if owner_id != interaction.user.id:
-                await interaction.response.defer()
-                await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Error!",
-                        description="You can't use someone else's PC!",
-                        color=get_random_color(),
-                    ),
-                    ephemeral=True,
-                )
+                await ModalsListener._defer_error(interaction, "You can't use someone else's PC!")
                 return
 
             command_input = (
@@ -116,28 +92,12 @@ class ModalsListener:
                 else None
             )
             if not command_input:
-                await interaction.response.defer()
-                await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Error!",
-                        description="No command entered.",
-                        color=get_random_color(),
-                    ),
-                    ephemeral=True,
-                )
+                await ModalsListener._defer_error(interaction, "No command entered.")
                 return
 
             command_text = (command_input.get("value", "") or "").strip()
             if not command_text:
-                await interaction.response.defer()
-                await interaction.followup.send(
-                    embed=discord.Embed(
-                        title="Error!",
-                        description="Command cannot be empty.",
-                        color=get_random_color(),
-                    ),
-                    ephemeral=True,
-                )
+                await ModalsListener._defer_error(interaction, "Command cannot be empty.")
                 return
 
             parts = command_text.split(maxsplit=1)
@@ -158,9 +118,9 @@ class ModalsListener:
                     )
                 case "code":
                     if (
-                        owner_id not in Shop.owned_items
-                        or "Hacker Code" not in Shop.owned_items[owner_id]
-                        or Shop.owned_items[owner_id]["Hacker Code"] <= 0
+                        owner_id not in global_state.inventory
+                        or "Hacker Code" not in global_state.inventory[owner_id]
+                        or global_state.inventory[owner_id]["Hacker Code"] <= 0
                     ):
                         ModalsListener._append_history(
                             owner_id, command, "failed: missing Hacker Code"
@@ -178,7 +138,7 @@ class ModalsListener:
                         )
                         return
 
-                    question, pattern, answer = generate_pattern()
+                    question, pattern, answer = HackerLaptop.challenge()
                     ModalsListener._append_history(
                         owner_id,
                         command,
@@ -201,59 +161,28 @@ class ModalsListener:
                     )
                 case "codeanswer":
                     if not command_arg:
-                        await interaction.response.defer()
-                        await interaction.followup.send(
-                            embed=discord.Embed(
-                                title="Error!",
-                                description="Usage: `codeanswer <answer>`",
-                                color=get_random_color(),
-                            ),
-                            ephemeral=True,
-                        )
+                        await ModalsListener._defer_error(interaction, "Usage: `codeanswer <answer>`")
                         return
 
-                    last_cmd = get_last_user_cmd(owner_id)
+                    last_cmd = LaptopHistory(owner_id).last()
                     if not last_cmd or last_cmd.get("command") != "code":
-                        await interaction.response.defer()
-                        await interaction.followup.send(
-                            embed=discord.Embed(
-                                title="Error!",
-                                description="Run `code` first.",
-                                color=get_random_color(),
-                            ),
-                            ephemeral=True,
-                        )
+                        await ModalsListener._defer_error(interaction, "Run `code` first.")
                         return
 
                     answer_raw = last_cmd.get("secret3")
                     if not answer_raw:
-                        await interaction.response.defer()
-                        await interaction.followup.send(
-                            embed=discord.Embed(
-                                title="Error!",
-                                description="No active challenge found. Run `code` again.",
-                                color=get_random_color(),
-                            ),
-                            ephemeral=True,
-                        )
+                        await ModalsListener._defer_error(interaction, "No active challenge found. Run `code` again.")
                         return
 
-                    Main = _get_main()
                     try:
                         user_answer = int(command_arg)
                         correct_answer = int(answer_raw)
                     except ValueError:
-                        if await debit_balance(
-                            PRIZE_OR_COST,
-                            interaction,
-                            Main.CONNSTR,
-                            Main.user_settings_map,
-                            Main.balance_map,
-                        ):
+                        if await debit(global_state.PRIZE_OR_COST, interaction.user, interaction):
                             ModalsListener._append_history(
                                 owner_id,
                                 "codeanswer",
-                                f"invalid input (-{PRIZE_OR_COST})",
+                                f"invalid input (-{global_state.PRIZE_OR_COST})",
                             )
                             await ModalsListener._refresh_laptop_message(
                                 interaction, owner_id
@@ -261,22 +190,16 @@ class ModalsListener:
                             await interaction.followup.send(
                                 embed=discord.Embed(
                                     title="Failure!",
-                                    description=f"Hacking failed due to incorrect input type. You lost :coin: {PRIZE_OR_COST}",
+                                    description=f"Hacking failed due to incorrect input type. You lost :coin: {global_state.PRIZE_OR_COST}",
                                     color=get_random_color(),
                                 ),
                             )
                         return
 
                     if user_answer == correct_answer:
-                        if await credit_balance(
-                            PRIZE_OR_COST,
-                            interaction,
-                            Main.CONNSTR,
-                            Main.user_settings_map,
-                            Main.balance_map,
-                        ):
+                        if await credit(global_state.PRIZE_OR_COST, interaction.user, interaction):
                             ModalsListener._append_history(
-                                owner_id, "codeanswer", f"success (+{PRIZE_OR_COST})"
+                                owner_id, "codeanswer", f"success (+{global_state.PRIZE_OR_COST})"
                             )
                             await ModalsListener._refresh_laptop_message(
                                 interaction, owner_id
@@ -284,20 +207,14 @@ class ModalsListener:
                             await interaction.followup.send(
                                 embed=discord.Embed(
                                     title="Success!",
-                                    description=f"Hacking successful! You got :coin: {PRIZE_OR_COST}",
+                                    description=f"Hacking successful! You got :coin: {global_state.PRIZE_OR_COST}",
                                     color=get_random_color(),
                                 )
                             )
                     else:
-                        if await debit_balance(
-                            PRIZE_OR_COST,
-                            interaction,
-                            Main.CONNSTR,
-                            Main.user_settings_map,
-                            Main.balance_map,
-                        ):
+                        if await debit(global_state.PRIZE_OR_COST, interaction.user, interaction):
                             ModalsListener._append_history(
-                                owner_id, "codeanswer", f"failed (-{PRIZE_OR_COST})"
+                                owner_id, "codeanswer", f"failed (-{global_state.PRIZE_OR_COST})"
                             )
                             await ModalsListener._refresh_laptop_message(
                                 interaction, owner_id
@@ -305,7 +222,7 @@ class ModalsListener:
                             await interaction.followup.send(
                                 embed=discord.Embed(
                                     title="Failure!",
-                                    description=f"Hacking failed due to wrong answer. You lost :coin: {PRIZE_OR_COST}",
+                                    description=f"Hacking failed due to wrong answer. You lost :coin: {global_state.PRIZE_OR_COST}",
                                     color=get_random_color(),
                                 )
                             )
@@ -336,7 +253,7 @@ class ModalsListener:
                     )
                     embed.add_field(
                         name="UTC/GMT",
-                        value=datetime.now(timezone.utc).strftime(
+                        value=datetime.now(UTC).strftime(
                             "%d %B %Y %I:%M:%S %p"
                         ),
                     )
@@ -358,12 +275,4 @@ class ModalsListener:
                     )
         except Exception as e:
             print(f"Error handling laptop command: {e}")
-            await interaction.response.defer()
-            await interaction.followup.send(
-                embed=discord.Embed(
-                    title="Error!",
-                    description="An error occurred while executing your command.",
-                    color=get_random_color(),
-                ),
-                ephemeral=True,
-            )
+            await ModalsListener._defer_error(interaction, "An error occurred while executing your command.")
