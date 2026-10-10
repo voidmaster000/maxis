@@ -150,7 +150,7 @@ To get help about commands, select one category below or use '/help (category)',
 For more information on the bot, how to use it, or queries about, contact us on our official discord server:-
 https://discord.gg/t79ZyuHr5K/
 Or visit Maxis's website:-
-https://user783667580106702848.pepich.de/""",
+https://maxis.voidmaster.dev/""",
                     color=get_random_color(),
                 )
 
@@ -225,6 +225,7 @@ https://user783667580106702848.pepich.de/""",
         )
         embed.add_field(name="Invite Link", value=invite_url, inline=True)
         embed.add_field(name="Version", value=VERSION, inline=True)
+        embed.add_field(name="Bot server", value="https://maxis.voidmaster.dev/", inline=True)
         embed.add_field(
             name="Bot discord server",
             value="https://discord.gg/t79ZyuHr5K",
@@ -233,7 +234,7 @@ https://user783667580106702848.pepich.de/""",
         embed.add_field(
             name="Bot type", value="Utility, Moderation and Economy Bot", inline=True
         )
-        embed.add_field(name="Developer", value="unknownpro56", inline=True)
+        embed.add_field(name="Developer", value="voidmaster000", inline=True)
 
         await interaction.response.send_message(embed=embed)
 
