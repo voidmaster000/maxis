@@ -14,9 +14,18 @@ from bot.transactions import credit, debit
 
 class ModalsListener:
     @staticmethod
-    async def _defer_error(interaction: discord.Interaction, message: str):
+    async def _defer_error(interaction: discord.Interaction, message: str) -> None:
         """Defer the modal, then tell the user what went wrong, privately."""
-        await ModalsListener._defer_error(interaction, message)
+        if not interaction.response.is_done():
+            await interaction.response.defer(ephemeral=True)
+        await interaction.followup.send(
+            embed=discord.Embed(
+                title="Error!",
+                description=message,
+                color=get_random_color(),
+            ),
+            ephemeral=True,
+        )
 
     @staticmethod
     async def on_modal_submit(interaction: discord.Interaction):

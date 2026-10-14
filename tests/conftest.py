@@ -102,6 +102,7 @@ class FakeInteraction:
         self.user = user or FakeUser(1)
         self.guild = object() if guild else None
         self.client: Any = None
+        self.data: Any = None
         self.sent: list[tuple[Any, Any]] = []
         self.edited: list[Any] = []
         self.followups: list[Any] = []
@@ -110,6 +111,14 @@ class FakeInteraction:
         interaction = self
 
         class _Response:
+            """Mirrors the real response object closely enough that code
+            guarding against a double response is exercised for real."""
+
+            def is_done(_self):
+                return interaction.deferred or bool(
+                    interaction.sent or interaction.edited
+                )
+
             async def send_message(_self, *, embed=None, view=None, content=None,
                                     ephemeral=False, **kwargs):
                 interaction.sent.append((embed, view))

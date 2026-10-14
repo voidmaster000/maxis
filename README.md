@@ -225,6 +225,7 @@ maxis/
 │   ├── test_command_tree.py   # command layout, install flags, /help
 │   ├── test_objects.py        # games, calculator, laptop, nitro, image swatch
 │   ├── test_startup.py        # what on_ready may block on, and when
+│   ├── test_modals_listener.py  # the hacker laptop modal
 │   └── test_economy.py        # money conservation and cooldowns
 ├── requirements.txt
 ├── requirements-dev.txt
