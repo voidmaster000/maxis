@@ -27,6 +27,10 @@ MUTABLE_STATE = (
     "laptop_history",
 )
 
+# Captured before any fixture replaces it, for the few tests that exercise how
+# a client is obtained rather than what gets written to it.
+REAL_COLLECTION = database_sync._collection
+
 
 @pytest.fixture(autouse=True)
 def isolated_state():
@@ -54,27 +58,39 @@ class _Discarded:
     def replace_one(self, *args, **kwargs):
         pass
 
+    def find(self):
+        return iter(())
+
 
 @pytest.fixture(autouse=True)
-def drained_writer():
-    """Keep one test's queued writes out of the next test.
+def no_real_database():
+    """Point the writer at a throwaway collection for the whole test.
 
-    The writer's pending dict is module-level and shared, so a save a test
-    triggered but did not wait for would land in whichever collection the next
-    test installed, and show up there as an unexpected extra write. Anything
-    still queued on the way out is drained into a throwaway collection.
+    global_state.CONNSTR is the production connection string on this machine,
+    and _collection() opens a real MongoClient from it on first use. The writer
+    thread runs concurrently with the test, so anything queued during the test
+    could be written before a teardown-only redirect took effect -- and was.
+    That is how test data reached the live balance document: a balance entry
+    for user 1, which is not a Discord snowflake, sits in production next to a
+    real one.
 
-    Only the teardown is redirected: patching the collection for the whole test
-    would hide the shared-client behaviour that test_database_sync checks.
+    Tests that want to see writes install their own collection over this one.
     """
-    yield
+    collection = _Discarded()
+    real = database_sync._collection
+    database_sync._collection = lambda: collection
 
-    real_collection = database_sync._collection
-    database_sync._collection = _Discarded
+    # Pretend every document loaded cleanly and empty, so the guards in
+    # save_*() let a test write freely. A fresh install is the same thing.
+    real_counts = database_sync._loaded_counts
+    database_sync._loaded_counts = dict.fromkeys(database_sync.DOCUMENTS, 0)
+
     try:
+        yield collection
         database_sync.flush()
     finally:
-        database_sync._collection = real_collection
+        database_sync._collection = real
+        database_sync._loaded_counts = real_counts
 
 
 class FakeUser:

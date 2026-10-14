@@ -41,6 +41,29 @@ _wake = threading.Event()
 _worker: threading.Thread | None = None
 _client: pymongo.MongoClient | None = None
 
+# Every document this bot persists. A name that is absent from the database is
+# a fresh install rather than a failure, so writing one is allowed; a name that
+# is present but could not be parsed stays unset here, and that is what makes
+# its saves refuse.
+DOCUMENTS = (
+    "reply",
+    "balance",
+    "usersettings",
+    "work",
+    "rob",
+    "daily",
+    "weekly",
+    "monthly",
+    "warn",
+    "laptop_history",
+    "item",
+)
+
+# How many entries each document held when it was read. Unset means "not known
+# to be good", which is what a save has to be sure of before replacing the
+# whole document.
+_loaded_counts: dict[str, int | None] = {}
+
 
 def _collection() -> Any:
     """The shared client, opened on first use.
@@ -95,6 +118,38 @@ def _save(name: str, key: list[Any], val: list[Any]) -> None:
     _wake.set()
 
 
+def _may_replace(name: str, keys: list[Any]) -> bool:
+    """Decide whether replacing this whole document with `keys` is safe.
+
+    Every save is a whole-document replace, so a save that is wrong is not
+    merged or corrected afterwards -- the old records are simply gone. Two
+    ways of getting here look exactly like a bot that has no users yet, and
+    both used to be silent:
+
+    - the document was never read, because the database was unreachable or the
+      document was malformed. The map being saved is then empty for a reason
+      that has nothing to do with the users actually having no balances, and
+      the very next /economy balance would erase everybody else's.
+    - the document holds entries but the map in memory is empty.
+
+    Refusing is loud on purpose. Silently not saving is its own failure, but it
+    is the recoverable one; silently deleting every balance is not.
+    """
+    stored = _loaded_counts.get(name)
+    if stored is None:
+        print(
+            f"Refusing to save '{name}': it was never loaded, so what is in "
+            f"memory is not what is stored."
+        )
+        return False
+    if not keys and stored:
+        print(
+            f"Refusing to replace {stored} stored '{name}' entry(ies) with none."
+        )
+        return False
+    return True
+
+
 def flush() -> None:
     """Block until every queued save has been written, not merely dequeued.
 
@@ -120,17 +175,24 @@ def close() -> None:
 
 
 def save_replies() -> None:
-    _save("reply", list(global_state.custom_replies), list(global_state.custom_replies.values()))
+    keys = list(global_state.custom_replies)
+    if _may_replace("reply", keys):
+        _save("reply", keys, list(global_state.custom_replies.values()))
 
 
 def save_balances() -> None:
-    _save("balance", list(global_state.balance_map), list(global_state.balance_map.values()))
+    keys = list(global_state.balance_map)
+    if _may_replace("balance", keys):
+        _save("balance", keys, list(global_state.balance_map.values()))
 
 
 def save_user_settings() -> None:
+    keys = list(global_state.user_settings_map)
+    if not _may_replace("usersettings", keys):
+        return
     _save(
         "usersettings",
-        list(global_state.user_settings_map),
+        keys,
         [
             {
                 "dm": settings.bank_dm_enabled,
@@ -142,7 +204,9 @@ def save_user_settings() -> None:
 
 
 def _save_times(name: str, times: dict[int, datetime]) -> None:
-    _save(name, list(times), list(times.values()))
+    keys = list(times)
+    if _may_replace(name, keys):
+        _save(name, keys, list(times.values()))
 
 
 def save_works() -> None:
@@ -166,9 +230,12 @@ def save_monthlies() -> None:
 
 
 def save_warns() -> None:
+    keys = list(global_state.warn_map)
+    if not _may_replace("warn", keys):
+        return
     _save(
         "warn",
-        list(global_state.warn_map),
+        keys,
         [
             {
                 "key": list(members),
@@ -187,17 +254,18 @@ def save_warns() -> None:
 
 
 def save_laptop_history() -> None:
-    _save(
-        "laptop_history",
-        list(global_state.laptop_history),
-        list(global_state.laptop_history.values()),
-    )
+    keys = list(global_state.laptop_history)
+    if _may_replace("laptop_history", keys):
+        _save("laptop_history", keys, list(global_state.laptop_history.values()))
 
 
 def save_inventory() -> None:
+    keys = list(global_state.inventory)
+    if not _may_replace("item", keys):
+        return
     _save(
         "item",
-        list(global_state.inventory),
+        keys,
         [
             {"key": list(items), "val": list(counts)}
             for items, counts in global_state.inventory.values()
@@ -240,16 +308,37 @@ def load_all() -> None:
     Each document is loaded on its own, so one unreadable group is reported and
     skipped rather than leaving the bot with nothing loaded and about to save
     that emptiness back over the database.
+
+    A document that is skipped is left unset in _loaded_counts, which is what
+    makes save_* refuse for it: the in-memory map is empty because the read
+    failed, not because the users have no data. If the database itself could
+    not be reached then every document stays unset and nothing is saved at all.
     """
+    _loaded_counts.clear()
+    connected = False
+    seen: set[str] = set()
+
     try:
         for doc in _collection().find():
+            name = doc.get("name")
+            seen.add(name)
             try:
                 _load_doc(doc)
             except Exception as e:
-                print(f"Error loading document '{doc.get('name')}': {e}")
+                # Explicit rather than absent: this one was seen and could not
+                # be read, which is what save_* needs to know to refuse.
+                _loaded_counts[name] = None
+                print(f"Error loading document '{name}': {e}")
+        connected = True
         print("Retrieved all data.")
     except Exception as e:
         print(f"Error initializing data: {e}")
+
+    for name in DOCUMENTS:
+        if name not in seen:
+            # Absent from the database, which for a fresh install is correct
+            # rather than a failure, so writing one is allowed.
+            _loaded_counts[name] = 0 if connected else None
 
 
 def _load_doc(doc: Doc) -> None:
@@ -324,6 +413,11 @@ def _load_doc(doc: Doc) -> None:
 
     else:
         print(f"Unknown document '{name}' found! Skipping")
+        return
+
+    # Only reached when the document parsed cleanly, which is what lets
+    # save_* trust the map it is about to write.
+    _loaded_counts[name] = len(keys)
 
 
 def _load_times(target: dict[int, datetime], keys: list[Any], vals: list[Any]) -> None:

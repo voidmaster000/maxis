@@ -11,6 +11,7 @@ import time
 import pytest
 
 from bot import database_sync, global_state
+from tests.conftest import REAL_COLLECTION
 
 
 class FakeCollection:
@@ -131,7 +132,9 @@ def test_one_client_is_shared_and_its_timeout_is_bounded(monkeypatch):
     import pymongo
 
     monkeypatch.setattr(pymongo, "MongoClient", FakeClient)
-    monkeypatch.setattr(database_sync, "_collection", database_sync._collection)
+    # Opt back in to how _collection obtains a client; the autouse fixture
+    # replaces it with a throwaway so no test can reach a real database.
+    monkeypatch.setattr(database_sync, "_collection", REAL_COLLECTION)
     monkeypatch.setattr(database_sync, "_client", None, raising=False)
     database_sync.flush()
 
@@ -187,6 +190,161 @@ def test_flush_waits_for_the_write_and_not_just_for_the_queue(monkeypatch):
 
 
 # --------------------------------------------------------------- the loader
+
+
+def test_no_test_can_reach_a_real_database():
+    """global_state.CONNSTR is the production connection string on this
+    machine and the writer thread runs concurrently with the test body, so a
+    save could reach production before any teardown redirect took effect. It
+    did: a balance entry for user 1, which is not a snowflake, turned up in
+    the live document next to a real one."""
+    assert database_sync._collection is not REAL_COLLECTION
+
+
+# ------------------------------------------------- refusing destructive saves
+
+
+def loaded_as(**counts):
+    """Pretend the named documents loaded with the given entry counts."""
+    database_sync._loaded_counts.update(counts)
+
+
+def test_balances_are_not_saved_when_the_document_never_loaded(collection):
+    """The wipe: a failed read leaves an empty map that looks like a bot with
+    no users. Saving it replaces every stored balance with nothing."""
+    loaded_as(balance=None)
+    global_state.balance_map = {}
+
+    database_sync.save_balances()
+    database_sync.flush()
+
+    assert collection.writes == []
+
+
+def test_a_populated_document_is_not_replaced_with_an_empty_map(collection):
+    loaded_as(balance=42)
+    global_state.balance_map = {}
+
+    database_sync.save_balances()
+    database_sync.flush()
+
+    assert collection.writes == []
+
+
+def test_a_real_balance_change_is_still_saved(collection):
+    loaded_as(balance=2)
+    global_state.balance_map = {1: 100, 2: 250}
+
+    database_sync.save_balances()
+    database_sync.flush()
+
+    assert collection.writes == [("balance", [100, 250])]
+
+
+def test_an_empty_map_over_an_empty_document_is_fine(collection):
+    """A fresh install has no balances, and writing an empty document for it
+    is correct rather than destructive."""
+    loaded_as(balance=0)
+    global_state.balance_map = {}
+
+    database_sync.save_balances()
+    database_sync.flush()
+
+    assert collection.writes == [("balance", [])]
+
+
+def test_one_broken_document_does_not_block_the_others(collection):
+    """The guard is per document, so a bad balance document still lets the
+    cooldown maps and the rest keep working."""
+    loaded_as(balance=None, daily=0)
+    global_state.balance_map = {}
+    global_state.user_daily_times = {}
+
+    database_sync.save_balances()
+    database_sync.save_dailies()
+    database_sync.flush()
+
+    assert [name for name, _ in collection.writes] == ["daily"]
+
+
+def test_an_unreachable_database_refuses_everything(monkeypatch, collection):
+    """Worse than a bad document: nothing loaded at all, so no map in memory
+    means anything."""
+    class Unreachable:
+        def find(self):
+            raise RuntimeError("no route to host")
+
+        def replace_one(self, *args, **kwargs):
+            raise AssertionError("must not write")
+
+    monkeypatch.setattr(database_sync, "_collection", lambda: Unreachable())
+    global_state.balance_map = {}
+
+    database_sync.load_all()
+    database_sync.save_balances()
+    database_sync.flush()
+
+    assert all(count is None for count in database_sync._loaded_counts.values())
+    assert collection.writes == []
+
+
+def test_a_malformed_document_blocks_only_its_own_saves(monkeypatch):
+    """The reported case: key and val of different lengths."""
+    class Loader(FakeCollection):
+        def find(self):
+            return iter(
+                [
+                    {"name": "balance", "key": [1, 2, 3], "val": [10]},
+                    {"name": "daily", "key": [], "val": []},
+                ]
+            )
+
+    fake = Loader()
+    monkeypatch.setattr(database_sync, "_collection", lambda: fake)
+    global_state.balance_map = {}
+
+    database_sync.load_all()
+    database_sync.save_balances()
+    database_sync.save_dailies()
+    database_sync.flush()
+
+    assert database_sync._loaded_counts["balance"] is None
+    assert database_sync._loaded_counts["daily"] == 0
+    assert [name for name, _ in fake.writes] == ["daily"]
+
+
+def test_an_absent_document_counts_as_empty_not_broken(monkeypatch):
+    """A fresh install has no documents at all, and must still be able to
+    write. Otherwise the guard would stop a new bot from ever storing anything.
+    """
+    class Empty(FakeCollection):
+        def find(self):
+            return iter(())
+
+    fake = Empty()
+    monkeypatch.setattr(database_sync, "_collection", lambda: fake)
+    global_state.balance_map = {7: 10}
+
+    database_sync.load_all()
+    database_sync.save_balances()
+    database_sync.flush()
+
+    assert database_sync._loaded_counts["balance"] == 0
+    assert fake.writes == [("balance", [10])]
+
+
+def test_a_well_formed_document_records_its_size():
+    loaded_as(balance=None)
+    database_sync._load_doc({"name": "balance", "key": [1, 2, 3], "val": [1, 2, 3]})
+
+    assert database_sync._loaded_counts["balance"] == 3
+
+
+def test_an_unknown_document_is_not_trusted():
+    loaded_as(balance=None)
+    database_sync._load_doc({"name": "something_else", "key": [1], "val": [1]})
+
+    assert database_sync._loaded_counts.get("balance") is None
 
 
 def test_a_well_formed_document_loads():
