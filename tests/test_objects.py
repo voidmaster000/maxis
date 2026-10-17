@@ -81,7 +81,7 @@ def test_the_rules_hold_for_every_board_a_real_game_can_reach():
 
     assert swept == 3**9
     assert decided == 8246, (
-        "boards with exactly one line, the only ones a " "real game ends on"
+        "boards with exactly one line, the only ones a real game ends on"
     )
     assert unreachable == 312, "boards giving both players a line at once"
 

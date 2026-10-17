@@ -383,8 +383,7 @@ def _load_doc(doc: Doc) -> None:
         _replace(
             global_state.warn_map,
             {
-                server_id
-                or 0: {
+                server_id or 0: {
                     user_id: _warn(data)
                     for user_id, data in zip(
                         entry.get("key") or [], entry.get("val") or [], strict=True
@@ -398,8 +397,7 @@ def _load_doc(doc: Doc) -> None:
         _replace(
             global_state.inventory,
             {
-                user_id
-                or 0: dict(
+                user_id or 0: dict(
                     zip(
                         entry.get("key") or [],
                         entry.get("val") or [],

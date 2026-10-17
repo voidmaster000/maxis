@@ -48,8 +48,8 @@ Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, mode
 python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements.txt -r requirements-dev.txt
 
-.\venv\Scripts\python.exe -m ruff check   # lint (config in pyproject.toml)
-.\venv\Scripts\python.exe -m black .      # format
+.\venv\Scripts\python.exe -m ruff check    # lint
+.\venv\Scripts\python.exe -m ruff format  # format (same config, one tool)
 .\venv\Scripts\python.exe -m pyright       # type check
 .\venv\Scripts\python.exe -m pytest        # tests
 .\venv\Scripts\python.exe -m pytest --cov=bot --cov-report=term-missing
@@ -58,8 +58,8 @@ python -m venv venv
 `pyproject.toml` points `pyright` and `ruff` at `./venv`, so both resolve the
 same discord.py the bot actually runs against rather than any other install on
 the machine. `requirements.txt` is pinned to the versions in `./venv`;
-`requirements-dev.txt` pins the tools above. Black reads its line length from
-the same `pyproject.toml`, so the two formatters agree on an 88 column limit.
+`requirements-dev.txt` pins the tools above. Ruff lints and formats, so the
+formatting and the import order come out of one config and cannot disagree.
 
 The tests run offline. Nothing touches Discord or MongoDB: commands are driven
 through the stand-ins in `tests/conftest.py`, and the database layer is given a

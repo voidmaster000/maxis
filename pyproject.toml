@@ -25,8 +25,8 @@ extend-exclude = ["venv"]
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
 # E501 is off on purpose: most long lines here are single-sentence user-facing
-# messages that read worse when wrapped, and there is no formatter to lay the
-# code out instead.
+# messages that read worse when wrapped. `ruff format` lays out the code, and it
+# will not break a string literal to fit, so these stay as written.
 ignore = ["E501"]
 
 [tool.pytest.ini_options]

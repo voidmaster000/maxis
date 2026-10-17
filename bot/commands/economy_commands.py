@@ -342,7 +342,7 @@ class Economy(commands.GroupCog):
         if users:
             formatted = "\n".join(
                 [
-                    f"{i+1}) {user[0].display_name} (:coin: {user[1]})"
+                    f"{i + 1}) {user[0].display_name} (:coin: {user[1]})"
                     for i, user in enumerate(users)
                 ]
             )
@@ -383,7 +383,10 @@ class Economy(commands.GroupCog):
 
         if users:
             formatted = "\n".join(
-                [f"{i+1}) {user[0]} (:coin: {user[1]})" for i, user in enumerate(users)]
+                [
+                    f"{i + 1}) {user[0]} (:coin: {user[1]})"
+                    for i, user in enumerate(users)
+                ]
             )
             embed = discord.Embed(
                 title=f"Top {len(users)} richest user(s) of Maxis:-",
