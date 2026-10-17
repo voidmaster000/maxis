@@ -135,8 +135,9 @@ class FakeInteraction:
                     interaction.sent or interaction.edited
                 )
 
-            async def send_message(_self, *, embed=None, view=None, content=None,
-                                    ephemeral=False, **kwargs):
+            async def send_message(
+                _self, *, embed=None, view=None, content=None, ephemeral=False, **kwargs
+            ):
                 interaction.sent.append((embed, view))
 
             async def edit_message(_self, *, embed=None, view=None, **kwargs):
@@ -146,8 +147,9 @@ class FakeInteraction:
                 interaction.deferred = True
 
         class _Followup:
-            async def send(_self, *, embed=None, view=None, content=None,
-                           ephemeral=False, **kwargs):
+            async def send(
+                _self, *, embed=None, view=None, content=None, ephemeral=False, **kwargs
+            ):
                 interaction.followups.append(embed)
 
         self.response = _Response()

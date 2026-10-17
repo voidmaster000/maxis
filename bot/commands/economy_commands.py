@@ -48,8 +48,6 @@ async def _reply_no_such_item(interaction: discord.Interaction, item: str) -> No
 class Economy(commands.GroupCog):
     """Economy slash commands (the /economy category)."""
 
-
-
     @app_commands.command(
         name="balance",
         description="Shows your current bank balance or another user's balance",
@@ -100,7 +98,9 @@ class Economy(commands.GroupCog):
             await interaction.response.send_message(embed=embed)
         database_sync.save_dailies()
 
-    @app_commands.command(name="weekly", description="Get your weekly 🪙 10000 earnings!")
+    @app_commands.command(
+        name="weekly", description="Get your weekly 🪙 10000 earnings!"
+    )
     async def weekly(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         last = global_state.user_weekly_times.get(user_id)
@@ -128,7 +128,9 @@ class Economy(commands.GroupCog):
             await interaction.response.send_message(embed=embed)
         database_sync.save_weeklies()
 
-    @app_commands.command(name="monthly", description="Get your monthly 🪙 50000 earnings!")
+    @app_commands.command(
+        name="monthly", description="Get your monthly 🪙 50000 earnings!"
+    )
     async def monthly(self, interaction: discord.Interaction):
         user_id = interaction.user.id
         last = global_state.user_monthly_times.get(user_id)
@@ -180,7 +182,9 @@ class Economy(commands.GroupCog):
             await interaction.response.send_message(embed=embed)
         database_sync.save_works()
 
-    @app_commands.command(name="rob", description="Rob others and get money, the dark way")
+    @app_commands.command(
+        name="rob", description="Rob others and get money, the dark way"
+    )
     @app_commands.describe(user="The user to rob")
     async def rob(self, interaction: discord.Interaction, user: discord.User):
         if not interaction.guild:
@@ -199,28 +203,38 @@ class Economy(commands.GroupCog):
 
         # Check cooldown
         if commander_id in global_state.user_robbed_times:
-            time_diff = (
-                datetime.now(UTC) - global_state.user_robbed_times[commander_id]
-            )
+            time_diff = datetime.now(UTC) - global_state.user_robbed_times[commander_id]
             if time_diff.total_seconds() < global_state.BASIC_COOLDOWN:
                 left = int(global_state.BASIC_COOLDOWN - time_diff.total_seconds())
-                await reply_error(interaction, f"You are currently on cooldown! You may use this command again after {left} seconds.")
+                await reply_error(
+                    interaction,
+                    f"You are currently on cooldown! You may use this command again after {left} seconds.",
+                )
                 return
 
         # Check passive mode
         if commander_id in global_state.user_settings_map:
             if global_state.user_settings_map[commander_id].bank_passive_enabled:
-                await reply_error(interaction, "You are in passive mode! You can't rob anyone.")
+                await reply_error(
+                    interaction, "You are in passive mode! You can't rob anyone."
+                )
                 return
 
         if user.id in global_state.user_settings_map:
             if global_state.user_settings_map[user.id].bank_passive_enabled:
-                await reply_error(interaction, "That user is in passive mode! Try someone else.")
+                await reply_error(
+                    interaction, "That user is in passive mode! Try someone else."
+                )
                 return
 
         # Check balance
-        if user.id not in global_state.balance_map or global_state.balance_map[user.id] < 1000:
-            await reply_error(interaction, "That user does not have enough money to rob!")
+        if (
+            user.id not in global_state.balance_map
+            or global_state.balance_map[user.id] < 1000
+        ):
+            await reply_error(
+                interaction, "That user does not have enough money to rob!"
+            )
             return
 
         # Perform robbery
@@ -242,11 +256,15 @@ class Economy(commands.GroupCog):
                 await interaction.response.send_message(embed=embed)
                 database_sync.save_balances()
 
-    @app_commands.command(name="give", description="Transfer money to others' accounts!")
+    @app_commands.command(
+        name="give", description="Transfer money to others' accounts!"
+    )
     @app_commands.describe(
         user="The user to give money to", amount="The amount of money to give"
     )
-    async def give(self, interaction: discord.Interaction, user: discord.User, amount: int):
+    async def give(
+        self, interaction: discord.Interaction, user: discord.User, amount: int
+    ):
         if not interaction.guild:
             await reply_error(interaction, "This command only works in servers!")
             return
@@ -268,12 +286,18 @@ class Economy(commands.GroupCog):
         # Check passive mode
         if user_id in global_state.user_settings_map:
             if global_state.user_settings_map[user_id].bank_passive_enabled:
-                await reply_error(interaction, "You are in passive mode! You can't give money to anyone.")
+                await reply_error(
+                    interaction,
+                    "You are in passive mode! You can't give money to anyone.",
+                )
                 return
 
         if user.id in global_state.user_settings_map:
             if global_state.user_settings_map[user.id].bank_passive_enabled:
-                await reply_error(interaction, "That user is in passive mode. You can't give money to them.")
+                await reply_error(
+                    interaction,
+                    "That user is in passive mode. You can't give money to them.",
+                )
                 return
 
         # Check balance
@@ -281,7 +305,9 @@ class Economy(commands.GroupCog):
             global_state.balance_map[user_id] = 0
 
         if amount > global_state.balance_map[user_id]:
-            await reply_error(interaction, "You can't give more money than you have in your account!")
+            await reply_error(
+                interaction, "You can't give more money than you have in your account!"
+            )
             return
 
         # Transfer money

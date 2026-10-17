@@ -1,5 +1,5 @@
 """
- Image generation slash commands
+Image generation slash commands
 """
 
 import random
@@ -145,4 +145,3 @@ class Image(commands.GroupCog):
         await interaction.followup.send(
             embed=embed, file=_colour_swatch(red, green, blue)
         )
-

@@ -92,7 +92,9 @@ class ModalsListener:
             owner_id = int(user_id_raw)
 
             if owner_id != interaction.user.id:
-                await ModalsListener._defer_error(interaction, "You can't use someone else's PC!")
+                await ModalsListener._defer_error(
+                    interaction, "You can't use someone else's PC!"
+                )
                 return
 
             command_input = (
@@ -106,7 +108,9 @@ class ModalsListener:
 
             command_text = (command_input.get("value", "") or "").strip()
             if not command_text:
-                await ModalsListener._defer_error(interaction, "Command cannot be empty.")
+                await ModalsListener._defer_error(
+                    interaction, "Command cannot be empty."
+                )
                 return
 
             parts = command_text.split(maxsplit=1)
@@ -170,24 +174,32 @@ class ModalsListener:
                     )
                 case "codeanswer":
                     if not command_arg:
-                        await ModalsListener._defer_error(interaction, "Usage: `codeanswer <answer>`")
+                        await ModalsListener._defer_error(
+                            interaction, "Usage: `codeanswer <answer>`"
+                        )
                         return
 
                     last_cmd = LaptopHistory(owner_id).last()
                     if not last_cmd or last_cmd.get("command") != "code":
-                        await ModalsListener._defer_error(interaction, "Run `code` first.")
+                        await ModalsListener._defer_error(
+                            interaction, "Run `code` first."
+                        )
                         return
 
                     answer_raw = last_cmd.get("secret3")
                     if not answer_raw:
-                        await ModalsListener._defer_error(interaction, "No active challenge found. Run `code` again.")
+                        await ModalsListener._defer_error(
+                            interaction, "No active challenge found. Run `code` again."
+                        )
                         return
 
                     try:
                         user_answer = int(command_arg)
                         correct_answer = int(answer_raw)
                     except ValueError:
-                        if await debit(global_state.PRIZE_OR_COST, interaction.user, interaction):
+                        if await debit(
+                            global_state.PRIZE_OR_COST, interaction.user, interaction
+                        ):
                             ModalsListener._append_history(
                                 owner_id,
                                 "codeanswer",
@@ -206,9 +218,13 @@ class ModalsListener:
                         return
 
                     if user_answer == correct_answer:
-                        if await credit(global_state.PRIZE_OR_COST, interaction.user, interaction):
+                        if await credit(
+                            global_state.PRIZE_OR_COST, interaction.user, interaction
+                        ):
                             ModalsListener._append_history(
-                                owner_id, "codeanswer", f"success (+{global_state.PRIZE_OR_COST})"
+                                owner_id,
+                                "codeanswer",
+                                f"success (+{global_state.PRIZE_OR_COST})",
                             )
                             await ModalsListener._refresh_laptop_message(
                                 interaction, owner_id
@@ -221,9 +237,13 @@ class ModalsListener:
                                 )
                             )
                     else:
-                        if await debit(global_state.PRIZE_OR_COST, interaction.user, interaction):
+                        if await debit(
+                            global_state.PRIZE_OR_COST, interaction.user, interaction
+                        ):
                             ModalsListener._append_history(
-                                owner_id, "codeanswer", f"failed (-{global_state.PRIZE_OR_COST})"
+                                owner_id,
+                                "codeanswer",
+                                f"failed (-{global_state.PRIZE_OR_COST})",
                             )
                             await ModalsListener._refresh_laptop_message(
                                 interaction, owner_id
@@ -262,9 +282,7 @@ class ModalsListener:
                     )
                     embed.add_field(
                         name="UTC/GMT",
-                        value=datetime.now(UTC).strftime(
-                            "%d %B %Y %I:%M:%S %p"
-                        ),
+                        value=datetime.now(UTC).strftime("%d %B %Y %I:%M:%S %p"),
                     )
                     ModalsListener._append_history(
                         owner_id, command, "displayed current utc datetime"
@@ -284,4 +302,6 @@ class ModalsListener:
                     )
         except Exception as e:
             print(f"Error handling laptop command: {e}")
-            await ModalsListener._defer_error(interaction, "An error occurred while executing your command.")
+            await ModalsListener._defer_error(
+                interaction, "An error occurred while executing your command."
+            )

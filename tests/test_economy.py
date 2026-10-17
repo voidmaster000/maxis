@@ -20,9 +20,17 @@ def economy():
 @pytest.fixture(autouse=True)
 def quiet_saves(monkeypatch):
     for name in (
-        "save_balances", "save_robs", "save_dailies", "save_weeklies",
-        "save_monthlies", "save_works", "save_inventory", "save_replies",
-        "save_warns", "save_laptop_history", "save_user_settings",
+        "save_balances",
+        "save_robs",
+        "save_dailies",
+        "save_weeklies",
+        "save_monthlies",
+        "save_works",
+        "save_inventory",
+        "save_replies",
+        "save_warns",
+        "save_laptop_history",
+        "save_user_settings",
     ):
         monkeypatch.setattr(database_sync, name, lambda: None)
     global_state.user_settings_map = {}
@@ -257,8 +265,9 @@ async def test_buying_uses_the_item_its_effect_before_returning(economy):
 
     await nitro.use_item(FakeInteraction(FakeUser(12)))
 
-    left = global_state.BASIC_COOLDOWN - (
-        datetime.now(UTC) - global_state.user_worked_times[12]
-    ).total_seconds()
+    left = (
+        global_state.BASIC_COOLDOWN
+        - (datetime.now(UTC) - global_state.user_worked_times[12]).total_seconds()
+    )
     assert left <= 1, f"{left:.1f}s still on cooldown"
     assert global_state.inventory[12]["Nitro"] == 0

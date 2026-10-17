@@ -93,12 +93,7 @@ class TicTacToe:
 
     def legal_moves(self) -> list[tuple[int, int]]:
         """Every empty cell, in row-major order."""
-        return [
-            (r, c)
-            for r in range(3)
-            for c in range(3)
-            if self.board[r][c] == ""
-        ]
+        return [(r, c) for r in range(3) for c in range(3) if self.board[r][c] == ""]
 
     # ------------------------------------------------------------------
     # Playing

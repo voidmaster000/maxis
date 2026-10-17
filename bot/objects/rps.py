@@ -68,13 +68,9 @@ class RpsGame:
     def embed(self) -> discord.Embed:
         """The message announcing the result."""
         if self.result is RpsResult.ERROR:
-            description = (
-                f"You chose {self.asked_for} and bot chose {self.bot_name}."
-            )
+            description = f"You chose {self.asked_for} and bot chose {self.bot_name}."
         else:
-            description = (
-                f"You chose {self.user_name} and bot chose {self.bot_name}."
-            )
+            description = f"You chose {self.user_name} and bot chose {self.bot_name}."
         return discord.Embed(
             title=self._TITLES[self.result],
             description=description,

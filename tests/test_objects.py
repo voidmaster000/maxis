@@ -80,15 +80,20 @@ def test_the_rules_hold_for_every_board_a_real_game_can_reach():
             unreachable += 1
 
     assert swept == 3**9
-    assert decided == 8246, "boards with exactly one line, the only ones a "\
-                             "real game ends on"
+    assert decided == 8246, (
+        "boards with exactly one line, the only ones a " "real game ends on"
+    )
     assert unreachable == 312, "boards giving both players a line at once"
 
 
 def test_whose_turn_follows_the_move_count():
     assert TicTacToe(EMPTY).whose_turn() == "X"
-    assert TicTacToe(board(("X", "", ""), ("", "", ""), ("", "", ""))).whose_turn() == "O"
-    assert TicTacToe(board(("X", "O", ""), ("", "", ""), ("", "", ""))).whose_turn() == "X"
+    assert (
+        TicTacToe(board(("X", "", ""), ("", "", ""), ("", "", ""))).whose_turn() == "O"
+    )
+    assert (
+        TicTacToe(board(("X", "O", ""), ("", "", ""), ("", "", ""))).whose_turn() == "X"
+    )
 
 
 def test_a_won_board_reports_its_winner():
@@ -183,7 +188,9 @@ def test_the_view_round_trips_through_discord_components():
     game.play((1, 1))
     game.play_bot_turn()
 
-    rebuilt = [_component_factory(d, None) for d in game.view(player_id=42).to_components()]
+    rebuilt = [
+        _component_factory(d, None) for d in game.view(player_id=42).to_components()
+    ]
 
     assert TicTacToe.from_components(rebuilt).board == game.board
 
@@ -203,9 +210,15 @@ def test_an_unknown_button_is_ignored():
 # ==================================================================== rps
 
 OUTCOMES = {
-    ("r", "r"): RpsResult.TIE, ("r", "p"): RpsResult.USER_WIN, ("r", "s"): RpsResult.BOT_WIN,
-    ("p", "r"): RpsResult.BOT_WIN, ("p", "p"): RpsResult.TIE, ("p", "s"): RpsResult.USER_WIN,
-    ("s", "r"): RpsResult.USER_WIN, ("s", "p"): RpsResult.BOT_WIN, ("s", "s"): RpsResult.TIE,
+    ("r", "r"): RpsResult.TIE,
+    ("r", "p"): RpsResult.USER_WIN,
+    ("r", "s"): RpsResult.BOT_WIN,
+    ("p", "r"): RpsResult.BOT_WIN,
+    ("p", "p"): RpsResult.TIE,
+    ("p", "s"): RpsResult.USER_WIN,
+    ("s", "r"): RpsResult.USER_WIN,
+    ("s", "p"): RpsResult.BOT_WIN,
+    ("s", "s"): RpsResult.TIE,
 }
 
 
@@ -262,7 +275,9 @@ def test_the_buttons_are_unchanged():
     view = RpsGame.choice_view()
 
     assert [b.custom_id for b in view.children] == [
-        "rps_rock", "rps_paper", "rps_scissors"
+        "rps_rock",
+        "rps_paper",
+        "rps_scissors",
     ]
     assert [b.label for b in view.children] == ["Rock", "Paper", "Scissors"]
 
@@ -475,7 +490,9 @@ def reference_swatch(red, green, blue, font):
     draw = ImageDraw.Draw(img)
     draw.rounded_rectangle([0, 0, 200, 55], radius=55 // 2, fill="white")
     draw.text((10, 6), f"RGB: {red}, {green}, {blue}", fill="black", font=font)
-    draw.text((10, 26), f"HEX: #{red:02X}{green:02X}{blue:02X}", fill="black", font=font)
+    draw.text(
+        (10, 26), f"HEX: #{red:02X}{green:02X}{blue:02X}", fill="black", font=font
+    )
     mask = PILImage.new("L", (500, 500), 0)
     ImageDraw.Draw(mask).rounded_rectangle([0, 0, 500, 500], radius=55 // 2, fill=255)
     img.putalpha(mask)
@@ -507,9 +524,7 @@ def test_the_font_falls_back_when_the_bundled_one_is_missing(monkeypatch):
     """
     import bot.commands.image_commands as image_commands
 
-    monkeypatch.setattr(
-        global_state, "resource_path", lambda name: f"no/such/{name}"
-    )
+    monkeypatch.setattr(global_state, "resource_path", lambda name: f"no/such/{name}")
 
     assert image_commands._font(18) is not None
 

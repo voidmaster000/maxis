@@ -65,7 +65,9 @@ class ComponentsListener:
         category = values[0].strip().lower() if values else None
 
         if category is None:
-            await reply_error(interaction, "No category was provided! Please pick one of the options.")
+            await reply_error(
+                interaction, "No category was provided! Please pick one of the options."
+            )
             return
 
         # Interaction.client is typed as Client, but for an application command

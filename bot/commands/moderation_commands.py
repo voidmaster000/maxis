@@ -1,4 +1,3 @@
-
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -32,15 +31,14 @@ async def require_moderator(interaction: discord.Interaction) -> discord.Guild |
 class Moderation(commands.GroupCog):
     """Moderation slash commands (the /moderation category)."""
 
-
-
     @app_commands.command(name="kick", description="Kicks the mentioned user")
     @app_commands.describe(
         user="The user to kick", reason="The reason for kicking (optional)"
     )
     @app_commands.default_permissions(kick_members=True)
     async def kick(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         user: discord.User,
         reason: str | None = None,
     ):
@@ -58,7 +56,10 @@ class Moderation(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed)
         except discord.Forbidden:
-            await reply_error(interaction, "I can't kick that user! Reasons - No kick permission, lower role or lower position.")
+            await reply_error(
+                interaction,
+                "I can't kick that user! Reasons - No kick permission, lower role or lower position.",
+            )
 
     @app_commands.command(name="ban", description="Bans the mentioned user")
     @app_commands.describe(
@@ -66,7 +67,8 @@ class Moderation(commands.GroupCog):
     )
     @app_commands.default_permissions(ban_members=True)
     async def ban(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         user: discord.User,
         reason: str | None = None,
     ):
@@ -84,7 +86,10 @@ class Moderation(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed)
         except discord.Forbidden:
-            await reply_error(interaction, "I can't ban that user! Reasons - No ban permission, lower role or lower position.")
+            await reply_error(
+                interaction,
+                "I can't ban that user! Reasons - No ban permission, lower role or lower position.",
+            )
 
     @app_commands.command(name="unban", description="Unbans the mentioned user")
     @app_commands.describe(user="The user to unban")
@@ -103,7 +108,9 @@ class Moderation(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed)
         except discord.Forbidden:
-            await reply_error(interaction, "I can't unban that user! Reasons - No unban permission.")
+            await reply_error(
+                interaction, "I can't unban that user! Reasons - No unban permission."
+            )
 
     @app_commands.command(
         name="mute", description="Mutes the mentioned user (Mute = Disable chat and VC)"
@@ -124,7 +131,10 @@ class Moderation(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed)
         except discord.Forbidden:
-            await reply_error(interaction, "I can't mute that user! Reasons - No mute permission, lower role or lower position.")
+            await reply_error(
+                interaction,
+                "I can't mute that user! Reasons - No mute permission, lower role or lower position.",
+            )
 
     @app_commands.command(
         name="unmute",
@@ -146,12 +156,16 @@ class Moderation(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed)
         except discord.Forbidden:
-            await reply_error(interaction, "I can't unmute that user! Reasons - No unmute permission.")
+            await reply_error(
+                interaction, "I can't unmute that user! Reasons - No unmute permission."
+            )
 
     @app_commands.command(name="warn", description="Warns a user")
     @app_commands.describe(user="The user to warn", cause="The reason for the warning")
     @app_commands.default_permissions(moderate_members=True)
-    async def warn(self, interaction: discord.Interaction, user: discord.Member, cause: str):
+    async def warn(
+        self, interaction: discord.Interaction, user: discord.Member, cause: str
+    ):
         guild = await require_moderator(interaction)
         if guild is None:
             return
@@ -202,7 +216,10 @@ class Moderation(commands.GroupCog):
 
         server_id = guild.id
 
-        if server_id in global_state.warn_map and user.id in global_state.warn_map[server_id]:
+        if (
+            server_id in global_state.warn_map
+            and user.id in global_state.warn_map[server_id]
+        ):
             del global_state.warn_map[server_id][user.id]
             embed = discord.Embed(
                 title="Success!",
@@ -230,7 +247,10 @@ class Moderation(commands.GroupCog):
 
         server_id = guild.id
 
-        if server_id in global_state.warn_map and user.id in global_state.warn_map[server_id]:
+        if (
+            server_id in global_state.warn_map
+            and user.id in global_state.warn_map[server_id]
+        ):
             warn = global_state.warn_map[server_id][user.id]
             causes = (
                 "\n".join(warn.warn_causes)
@@ -245,7 +265,9 @@ class Moderation(commands.GroupCog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="clear", description="Clears specified number of messages")
+    @app_commands.command(
+        name="clear", description="Clears specified number of messages"
+    )
     @app_commands.describe(amount="The number of messages to clear")
     @app_commands.default_permissions(manage_messages=True)
     async def clear_messages(self, interaction: discord.Interaction, amount: int):
@@ -271,7 +293,9 @@ class Moderation(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
         except discord.Forbidden:
-            await reply_error(interaction, "I don't have permission to manage messages!")
+            await reply_error(
+                interaction, "I don't have permission to manage messages!"
+            )
 
     @app_commands.command(name="nuke", description="Cleans everything in a channel")
     @app_commands.default_permissions(manage_channels=True)
@@ -322,4 +346,6 @@ class Moderation(commands.GroupCog):
             )
             await new_channel.send(embed=embed)
         except discord.Forbidden:
-            await reply_error(interaction, "I don't have permission to manage channels!")
+            await reply_error(
+                interaction, "I don't have permission to manage channels!"
+            )

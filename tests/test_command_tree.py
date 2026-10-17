@@ -66,7 +66,9 @@ def test_every_category_is_installable_and_usable_everywhere(group):
     installs, contexts = cmd.allowed_installs, cmd.allowed_contexts
 
     assert installs and installs.guild and installs.user
-    assert contexts and contexts.guild and contexts.dm_channel and contexts.private_channel
+    assert (
+        contexts and contexts.guild and contexts.dm_channel and contexts.private_channel
+    )
 
 
 @pytest.mark.parametrize("group", CATEGORIES)
@@ -137,9 +139,9 @@ async def test_help_with_no_argument_shows_the_index():
 
     embed, _ = interaction.sent[0]
     assert embed.title == "Maxis help docs"
-    assert len([line for line in embed.description.splitlines() if "```" in line]) == len(
-        CATEGORIES
-    )
+    assert len(
+        [line for line in embed.description.splitlines() if "```" in line]
+    ) == len(CATEGORIES)
 
 
 async def test_the_index_does_not_repeat_the_category_name():

@@ -87,9 +87,11 @@ async def debit(
     if amount > opening:
         await _error(
             interaction,
-            "You can't withdraw, because you have no money!"
-            if opening == 0
-            else "You can't withdraw more than you have in your bank!",
+            (
+                "You can't withdraw, because you have no money!"
+                if opening == 0
+                else "You can't withdraw more than you have in your bank!"
+            ),
         )
         return False
 

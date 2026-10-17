@@ -75,7 +75,9 @@ def _collection() -> Any:
     global _client
     with _lock:
         if _client is None:
-            _client = pymongo.MongoClient(global_state.CONNSTR, serverSelectionTimeoutMS=5000)
+            _client = pymongo.MongoClient(
+                global_state.CONNSTR, serverSelectionTimeoutMS=5000
+            )
     return _client[global_state.DATABASE][global_state.COLLECTION]
 
 
@@ -143,9 +145,7 @@ def _may_replace(name: str, keys: list[Any]) -> bool:
         )
         return False
     if not keys and stored:
-        print(
-            f"Refusing to replace {stored} stored '{name}' entry(ies) with none."
-        )
+        print(f"Refusing to replace {stored} stored '{name}' entry(ies) with none.")
         return False
     return True
 
@@ -383,7 +383,8 @@ def _load_doc(doc: Doc) -> None:
         _replace(
             global_state.warn_map,
             {
-                server_id or 0: {
+                server_id
+                or 0: {
                     user_id: _warn(data)
                     for user_id, data in zip(
                         entry.get("key") or [], entry.get("val") or [], strict=True
@@ -397,7 +398,8 @@ def _load_doc(doc: Doc) -> None:
         _replace(
             global_state.inventory,
             {
-                user_id or 0: dict(
+                user_id
+                or 0: dict(
                     zip(
                         entry.get("key") or [],
                         entry.get("val") or [],

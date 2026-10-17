@@ -1,5 +1,5 @@
 """
- Utility slash commands
+Utility slash commands
 """
 
 import asyncio
@@ -27,10 +27,8 @@ from bot.objects.user_settings import UserSettings
 
 # Discord choice objects for /utility currconv, built from global_state.
 CURRENCY_CHOICES = [
-    app_commands.Choice(name=code, value=code)
-    for code in global_state.CURRENCY_CODES
+    app_commands.Choice(name=code, value=code) for code in global_state.CURRENCY_CODES
 ]
-
 
 
 class Setting(NamedTuple):
@@ -60,8 +58,6 @@ SETTINGS: dict[str, Setting] = {
 }
 
 
-
-
 class Utility(commands.GroupCog):
     """Basic utility slash commands (the /utility category)."""
 
@@ -85,7 +81,9 @@ class Utility(commands.GroupCog):
         )
         await interaction.response.send_message(embed=embed)
 
-    @app_commands.command(name="datetime", description="Displays the current date and time")
+    @app_commands.command(
+        name="datetime", description="Displays the current date and time"
+    )
     @app_commands.describe(timezone="Choose which timezone to display the time in")
     @app_commands.autocomplete(timezone=timezone_autocomplete)
     async def datetime_cmd(
@@ -105,7 +103,9 @@ class Utility(commands.GroupCog):
 
     @app_commands.command(name="replies", description="Display all custom replies")
     async def replies(self, interaction: discord.Interaction):
-        repl = "\n".join([f"{key}: {val}" for key, val in global_state.custom_replies.items()])
+        repl = "\n".join(
+            [f"{key}: {val}" for key, val in global_state.custom_replies.items()]
+        )
         embed = discord.Embed(
             title="Currently set custom replies:-",
             description=repl if repl else "No custom replies have been set up yet!",
@@ -156,7 +156,9 @@ class Utility(commands.GroupCog):
         )
         embed.add_field(name="Invite Link", value=invite_url, inline=True)
         embed.add_field(name="Version", value=global_state.VERSION, inline=True)
-        embed.add_field(name="Bot server", value="https://maxis.voidmaster.dev/", inline=True)
+        embed.add_field(
+            name="Bot server", value="https://maxis.voidmaster.dev/", inline=True
+        )
         embed.add_field(
             name="Bot discord server",
             value="https://discord.gg/t79ZyuHr5K",
@@ -341,7 +343,9 @@ class Utility(commands.GroupCog):
     @app_commands.describe(
         filename="The name to give the file", content="The content of the file"
     )
-    async def makefile(self, interaction: discord.Interaction, filename: str, content: str):
+    async def makefile(
+        self, interaction: discord.Interaction, filename: str, content: str
+    ):
         # The file always lands in a throwaway temp directory, so `filename` is
         # only ever used as the download name and can never escape it.
         safe_name = os.path.basename(filename.strip().replace("\\", "/")).strip()
@@ -385,10 +389,13 @@ class Utility(commands.GroupCog):
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    @app_commands.command(name="calculate", description="Solve a mathematical expression")
+    @app_commands.command(
+        name="calculate", description="Solve a mathematical expression"
+    )
     @app_commands.describe(expression="The expression to solve (brackets supported)")
     async def calculate(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         expression: str,
     ):
         result = Calculator(expression).evaluate()
@@ -400,13 +407,17 @@ class Utility(commands.GroupCog):
             )
             await interaction.response.send_message(embed=embed)
         else:
-            await reply_error(interaction, f"Failed to calculate `{expression}`: {result.error}")
+            await reply_error(
+                interaction, f"Failed to calculate `{expression}`: {result.error}"
+            )
 
     @app_commands.command(name="reply", description="Set a custom reply")
     @app_commands.describe(
         text="The text to trigger the reply", reply="The reply message"
     )
-    async def set_custom_reply(self, interaction: discord.Interaction, text: str, reply: str):
+    async def set_custom_reply(
+        self, interaction: discord.Interaction, text: str, reply: str
+    ):
         if text and reply:
             global_state.custom_replies[text] = reply
             database_sync.save_replies()
@@ -449,7 +460,9 @@ class Utility(commands.GroupCog):
     @app_commands.describe(
         user="The user to DM", dm_message="The message to DM to the user"
     )
-    async def dm(self, interaction: discord.Interaction, user: discord.User, dm_message: str):
+    async def dm(
+        self, interaction: discord.Interaction, user: discord.User, dm_message: str
+    ):
         embed = discord.Embed(
             title=(
                 f"Alert! Message from {interaction.user.name} at {interaction.guild.name} :-"
@@ -476,7 +489,9 @@ class Utility(commands.GroupCog):
             )
             await interaction.response.send_message(embed=error_embed)
 
-    @app_commands.command(name="rps", description='Play "Rock Paper Scissors" with the bot')
+    @app_commands.command(
+        name="rps", description='Play "Rock Paper Scissors" with the bot'
+    )
     @app_commands.describe(choice="Your choice (rock, paper, or scissors)")
     @app_commands.choices(
         choice=[
@@ -519,7 +534,8 @@ class Utility(commands.GroupCog):
         enabled = {"true": True, "false": False}.get(value)
         if enabled is None:
             await reply_error(
-                interaction, "Incorrect arguments given! Use 'true' or 'false' for the value."
+                interaction,
+                "Incorrect arguments given! Use 'true' or 'false' for the value.",
             )
             return
 
@@ -542,7 +558,9 @@ class Utility(commands.GroupCog):
 
     # Load currencies for autocomplete
 
-    @app_commands.command(name="currconv", description="Converts one currency to another")
+    @app_commands.command(
+        name="currconv", description="Converts one currency to another"
+    )
     @app_commands.describe(
         convert_amount="The amount of money to convert",
         from_currency="The currency of the given amount (e.g., USD, EUR)",
@@ -550,7 +568,8 @@ class Utility(commands.GroupCog):
     )
     @app_commands.choices(from_currency=CURRENCY_CHOICES, to_currency=CURRENCY_CHOICES)
     async def currency_convert(
-        self, interaction: discord.Interaction,
+        self,
+        interaction: discord.Interaction,
         convert_amount: float,
         from_currency: str,
         to_currency: str,

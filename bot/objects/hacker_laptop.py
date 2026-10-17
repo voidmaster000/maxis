@@ -62,7 +62,9 @@ class LaptopHistory:
         global_state.laptop_history[str(self.user_id)] = entries
         database_sync.save_laptop_history()
 
-    def recent(self, limit: int = global_state.MAX_HISTORY_LINES) -> list[CommandHistoryEntry]:
+    def recent(
+        self, limit: int = global_state.MAX_HISTORY_LINES
+    ) -> list[CommandHistoryEntry]:
         """The most recent entries, oldest first."""
         entries = self.entries
         return entries[-limit:] if entries else []
@@ -122,7 +124,11 @@ class HackerLaptop:
 
         question = "n(i) = n(i - 1) + (i * m) + a, find n(10):"
 
-        return question, ", ".join(map(str, pattern)), current + (multiplier * 10) + adder
+        return (
+            question,
+            ", ".join(map(str, pattern)),
+            current + (multiplier * 10) + adder,
+        )
 
     @classmethod
     async def open(cls, interaction: discord.Interaction) -> None:

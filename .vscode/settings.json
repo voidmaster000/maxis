@@ -1,5 +1,4 @@
 {
-  "python.analysis.diagnosticSeverityOverrides": {
-    "reportUnusedFunction": "none"
-  }
+  "editor.defaultFormatter": "ms-python.black-formatter",
+  "editor.formatOnSave": true
 }

@@ -44,7 +44,9 @@ class ShopItem:
         owned = global_state.inventory.get(user_id, {})
 
         if owned.get(self.name, 0) <= 0:
-            await reply_error(interaction, "You don't have this item! Buy it from the shop to use it.")
+            await reply_error(
+                interaction, "You don't have this item! Buy it from the shop to use it."
+            )
             return
 
         remaining = self._consume(user_id, owned)
@@ -85,8 +87,11 @@ class ShopItem:
             owned = global_state.inventory.setdefault(user_id, {})
 
             if owned.get(self.name, 0) > 0:
-                await reply_error(interaction, f"You already own this item! Use it with "
-                            f"```/economy use {self.command}```.")
+                await reply_error(
+                    interaction,
+                    f"You already own this item! Use it with "
+                    f"```/economy use {self.command}```.",
+                )
                 return
 
             if not await debit(self.cost, interaction.user, interaction):
@@ -184,7 +189,9 @@ class Shop:
     def find(cls, command: str) -> ShopItem | None:
         """The item a /economy <command> argument names, or None."""
         wanted = command.strip().lower()
-        return next((item for item in cls.items if item.command.lower() == wanted), None)
+        return next(
+            (item for item in cls.items if item.command.lower() == wanted), None
+        )
 
     @classmethod
     def by_name(cls, name: str) -> ShopItem | None:

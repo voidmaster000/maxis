@@ -270,6 +270,7 @@ def test_one_broken_document_does_not_block_the_others(collection):
 def test_an_unreachable_database_refuses_everything(monkeypatch, collection):
     """Worse than a bad document: nothing loaded at all, so no map in memory
     means anything."""
+
     class Unreachable:
         def find(self):
             raise RuntimeError("no route to host")
@@ -290,6 +291,7 @@ def test_an_unreachable_database_refuses_everything(monkeypatch, collection):
 
 def test_a_malformed_document_blocks_only_its_own_saves(monkeypatch):
     """The reported case: key and val of different lengths."""
+
     class Loader(FakeCollection):
         def find(self):
             return iter(
@@ -317,6 +319,7 @@ def test_an_absent_document_counts_as_empty_not_broken(monkeypatch):
     """A fresh install has no documents at all, and must still be able to
     write. Otherwise the guard would stop a new bot from ever storing anything.
     """
+
     class Empty(FakeCollection):
         def find(self):
             return iter(())
@@ -367,7 +370,11 @@ def test_a_mismatch_leaves_nothing_half_loaded():
     global_state.inventory = {99: {"Juice": 5}}
     with pytest.raises(ValueError):
         database_sync._load_doc(
-            {"name": "item", "key": [1], "val": [{"key": ["Juice", "Nitro"], "val": [1]}]}
+            {
+                "name": "item",
+                "key": [1],
+                "val": [{"key": ["Juice", "Nitro"], "val": [1]}],
+            }
         )
 
     assert global_state.inventory == {99: {"Juice": 5}}
@@ -383,7 +390,11 @@ def test_missing_key_or_val_loads_as_empty():
 def test_nested_documents_load():
     global_state.inventory = {}
     database_sync._load_doc(
-        {"name": "item", "key": [1], "val": [{"key": ["Juice", "Nitro"], "val": [2, 1]}]}
+        {
+            "name": "item",
+            "key": [1],
+            "val": [{"key": ["Juice", "Nitro"], "val": [2, 1]}],
+        }
     )
 
     assert global_state.inventory == {1: {"Juice": 2, "Nitro": 1}}
