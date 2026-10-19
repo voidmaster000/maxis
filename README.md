@@ -229,19 +229,23 @@ maxis/
 │   └── public/
 ├── tests/
 │   ├── conftest.py            # stand-ins for Discord + per-test state isolation
-│   ├── test_database_sync.py  # the writer, its retries, and the loader
 │   ├── test_command_tree.py   # command layout, install flags, /help
-│   ├── test_objects.py        # games, calculator, laptop, nitro, image swatch
 │   ├── test_startup.py        # what on_ready may block on, and when
 │   ├── test_events.py         # on_message, on_interaction, the status page
-│   ├── test_components_listener.py  # buttons, the help dropdown, the dispatcher
-│   ├── test_modals_listener.py      # the hacker laptop modal
-│   ├── test_economy.py        # money conservation and cooldowns
-│   ├── test_moderation.py     # the moderator gate and every action
-│   ├── test_utility.py        # argument handling, custom replies, currconv
-│   ├── test_transactions.py   # credit / debit, including the failure paths
-│   ├── test_image.py          # colour validation and the files sent back
-│   └── test_helper.py         # random ranges and the currency list's limits
+│   ├── core/
+│   │   ├── test_database_sync.py        # the writer, its retries, and the loader
+│   │   ├── test_transactions.py         # credit / debit, including the failure paths
+│   │   └── test_helper.py               # random ranges, the currency list, resource paths
+│   ├── commands/
+│   │   ├── test_economy.py              # money conservation and cooldowns
+│   │   ├── test_moderation.py           # the moderator gate and every action
+│   │   ├── test_utility.py              # argument handling, custom replies, currconv
+│   │   └── test_image.py                # colour validation and the files sent back
+│   ├── listeners/
+│   │   ├── test_components_listener.py  # buttons, the help dropdown, the dispatcher
+│   │   └── test_modals_listener.py      # the hacker laptop modal
+│   └── objects/
+│       └── test_objects.py              # games, calculator, laptop, nitro, image swatch
 ├── requirements.txt
 ├── requirements-dev.txt
 └── pyproject.toml          # pyright + ruff + pytest configuration

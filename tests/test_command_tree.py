@@ -1,5 +1,7 @@
 """The command tree, how commands are installed, and /help."""
 
+import asyncio
+
 import pytest
 from discord import app_commands
 
@@ -12,9 +14,13 @@ CATEGORIES = ["utility", "moderation", "economy", "image"]
 
 @pytest.fixture(scope="module", autouse=True)
 def registered():
-    import asyncio
+    """The tree is populated once for the process, so register only if needed.
 
-    asyncio.run(setup_slash_commands(bot))
+    Registration is global: a second `add_cog` for the same category raises, so
+    this cannot assume it is the first module to ask for a populated tree.
+    """
+    if bot.get_cog("Utility") is None:
+        asyncio.run(setup_slash_commands(bot))
     return bot
 
 
