@@ -2,6 +2,7 @@
 Modal submission handlers
 """
 
+import logging
 from datetime import UTC, datetime
 
 import discord
@@ -10,6 +11,8 @@ from bot import global_state
 from bot.helper import get_random_color
 from bot.objects.hacker_laptop import HackerLaptop, LaptopHistory
 from bot.transactions import credit, debit
+
+logger = logging.getLogger(__name__)
 
 
 class ModalsListener:
@@ -77,8 +80,8 @@ class ModalsListener:
             return
         except discord.NotFound:
             return
-        except Exception as ex:
-            print(f"Error refreshing laptop message: {ex}")
+        except Exception:
+            logger.exception("Error refreshing laptop message")
 
     @staticmethod
     async def _handle_laptop_command(interaction: discord.Interaction, custom_id: str):
@@ -300,8 +303,8 @@ class ModalsListener:
                         ),
                         ephemeral=True,
                     )
-        except Exception as e:
-            print(f"Error handling laptop command: {e}")
+        except Exception:
+            logger.exception("Error handling laptop command")
             await ModalsListener._defer_error(
                 interaction, "An error occurred while executing your command."
             )

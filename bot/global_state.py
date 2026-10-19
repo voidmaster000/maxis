@@ -1,22 +1,25 @@
 """
 Global configuration and runtime state for Maxis.
 
-Every module-level constant in the project lives here, so there is one place to
-look for tuning values and one place to change them. Below the constants sits
-the mutable data the cogs share; persistence of that data is handled by
-`bot.database_sync`, and balance changes by `bot.transactions`.
+Every module-level tuning constant in the project lives here, so there is one
+place to look and one place to change. Below the constants sits the mutable data
+the cogs share; persistence of that data is handled by `bot.database_sync`, and
+balance changes by `bot.transactions`.
+
+Reference data that has to be read from disk is deliberately *not* here:
+`global_state` is imported by everything, so it stays free of file I/O. The
+currency list lives in `bot.currencies` instead.
 
 This module imports nothing from the rest of the bot except `bot.objects`,
 which are plain data classes. That is what lets every cog do a plain
 module-level `from bot import global_state` without creating an import cycle.
 """
 
-import json
 import os
 from datetime import datetime
 from decimal import getcontext
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -51,7 +54,7 @@ def resource_path(*parts: str) -> Path:
 # Bot metadata
 # ---------------------------------------------------------------------------
 
-VERSION: str = "5.1.1"
+VERSION: str = "5.1.2"
 
 INVITE_URL: str = (
     "https://discord.com/api/oauth2/authorize"
@@ -120,25 +123,6 @@ WORKS: list[str] = [
     "won a lucky draw and earned",
 ]
 
-
-class Currency(TypedDict):
-    code: str
-    name: str
-
-
-def _load_currencies() -> list[Currency]:
-    """Read the supported currency list from resources/currencies.json."""
-    try:
-        with open(resource_path("currencies.json")) as f:
-            data: dict[str, list[Currency]] = json.load(f)
-        return data.get("currencies", [])
-    except Exception as e:
-        print(f"Failed to load currency list: {e}")
-        return []
-
-
-CURRENCIES: list[Currency] = _load_currencies()
-CURRENCY_CODES: list[str] = [entry["code"] for entry in CURRENCIES if "code" in entry]
 
 # ---------------------------------------------------------------------------
 # Mutable runtime state

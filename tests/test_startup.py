@@ -8,6 +8,7 @@ answered. Anything arriving in that window is dead, and comes back as error
 """
 
 import asyncio
+import logging
 import threading
 import time
 
@@ -15,14 +16,21 @@ import pytest
 
 import bot.main as main
 from bot import database_sync
+from bot.logging_setup import setup_logging
 
 
 @pytest.fixture(autouse=True)
 def reset_startup_flags(monkeypatch):
-    """Each test starts as though the bot has never been ready."""
+    """Each test starts as though the bot has never been ready.
+
+    uvicorn.run is stubbed rather than _start_status_page, so the guard inside
+    _start_status_page is the real one under test instead of being bypassed: no
+    test binds a port, but the decision to open one is the code's own.
+    """
     monkeypatch.setattr(main, "_cogs_loaded", False)
     monkeypatch.setattr(main, "_initialised", False)
-    monkeypatch.setattr(main, "_start_status_page", lambda: None)
+    monkeypatch.setattr(main, "_status_page_started", False)
+    monkeypatch.setattr(main.uvicorn, "run", lambda *args, **kwargs: None)
 
 
 async def _nothing(*args, **kwargs):
@@ -125,3 +133,48 @@ async def test_commands_are_registered_again_never(monkeypatch):
         await main.on_ready()
 
     assert calls == ["cogs"]
+
+
+async def test_the_status_page_is_started_once_however_often_ready_fires(monkeypatch):
+    """It binds a port, and on_ready fires again on every reconnect.
+
+    The second uvicorn.run would raise inside a thread nobody is watching, so
+    the reconnect would leave a dead server behind with no sign of it.
+    """
+    stub_ready_environment(monkeypatch)
+
+    started = threading.Event()
+    calls: list[int] = []
+
+    def counted(*args, **kwargs):
+        calls.append(1)
+        started.set()
+
+    monkeypatch.setattr(main.uvicorn, "run", counted)
+
+    for _ in range(3):
+        await main.on_ready()
+
+    assert started.wait(2), "the status page was never started"
+    # Give any wrongly-spawned duplicate a chance to reach uvicorn.run.
+    time.sleep(0.1)
+    assert len(calls) == 1, f"uvicorn.run was called {len(calls)} times"
+
+
+def test_logging_is_configured_in_one_place_with_a_time_and_a_level(monkeypatch):
+    """Every module only asks for a logger; the entry point sets the format.
+
+    Recorded rather than applied, so the test does not reconfigure the root
+    logger that the rest of the suite is running under.
+    """
+    configured: dict = {}
+    monkeypatch.setattr(
+        logging, "basicConfig", lambda **kwargs: configured.update(kwargs)
+    )
+
+    setup_logging()
+
+    assert configured["level"] == logging.INFO
+    assert "%(asctime)s" in configured["format"]
+    assert "%(levelname)" in configured["format"]
+    assert "%(name)s" in configured["format"]

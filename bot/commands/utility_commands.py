@@ -3,6 +3,7 @@ Utility slash commands
 """
 
 import asyncio
+import logging
 import math
 import os
 import shutil
@@ -17,17 +18,20 @@ from discord import app_commands
 from discord.ext import commands
 
 from bot import database_sync, global_state
+from bot.currencies import CURRENCY_CODES
 from bot.helper import get_random_color, reply_error, timezone_autocomplete
 from bot.objects.calculator import Calculator
 from bot.objects.rps import RpsGame
 from bot.objects.tictactoe import TicTacToe
 from bot.objects.user_settings import UserSettings
 
+logger = logging.getLogger(__name__)
+
 # ---------------------------------------------------------------------------
 
-# Discord choice objects for /utility currconv, built from global_state.
+# Discord choice objects for /utility currconv, built from the currency list.
 CURRENCY_CHOICES = [
-    app_commands.Choice(name=code, value=code) for code in global_state.CURRENCY_CODES
+    app_commands.Choice(name=code, value=code) for code in CURRENCY_CODES
 ]
 
 
@@ -95,8 +99,21 @@ class Utility(commands.GroupCog):
         embed.add_field(name="Local Time", value=f"<t:{int(nowlocal.timestamp())}:F>")
         embed.add_field(name="UTC/GMT", value=nowutc.strftime("%d %B %Y %I:%M:%S %p"))
         if timezone:
-            nowtz = datetime.now(zoneinfo.ZoneInfo(timezone))
-            embed.add_field(name=timezone, value=nowtz.strftime("%d %B %Y %I:%M:%S %p"))
+            # The value comes from autocomplete, but it is still just a string a
+            # client can send anything for, and ZoneInfo raises on an unknown
+            # key rather than returning nothing.
+            try:
+                zone = zoneinfo.ZoneInfo(timezone)
+            except (KeyError, ValueError):
+                await reply_error(
+                    interaction,
+                    f"Unknown timezone '{timezone}'! Pick one from the suggestions.",
+                )
+                return
+            embed.add_field(
+                name=timezone,
+                value=datetime.now(zone).strftime("%d %B %Y %I:%M:%S %p"),
+            )
         await interaction.response.send_message(embed=embed)
 
     # ------------------------------------------------------------------
@@ -556,8 +573,6 @@ class Utility(commands.GroupCog):
             )
         )
 
-    # Load currencies for autocomplete
-
     @app_commands.command(
         name="currconv", description="Converts one currency to another"
     )
@@ -577,7 +592,7 @@ class Utility(commands.GroupCog):
         await interaction.response.defer()
 
         # Validate currencies against the fixed list
-        valid_codes = global_state.CURRENCY_CODES
+        valid_codes = CURRENCY_CODES
         if not valid_codes:
             await interaction.followup.send(
                 embed=discord.Embed(
@@ -648,8 +663,8 @@ class Utility(commands.GroupCog):
                         color=get_random_color(),
                     )
                 )
-        except Exception as e:
-            print(f"Error in currency conversion: {e}")
+        except Exception:
+            logger.exception("Error in currency conversion")
             await interaction.followup.send(
                 embed=discord.Embed(
                     title="Error!",

@@ -108,14 +108,21 @@ def help_category_embed(group: app_commands.Group) -> discord.Embed:
 # --------------------------------------------------------------------------
 
 
-def get_random_integer(max_inclusive: int, min_inclusive: int) -> int:
-    """Get random integer between min and max (inclusive)"""
-    if max_inclusive == min_inclusive:
-        return max_inclusive
-    if max_inclusive < min_inclusive:
-        return 0
-    val = random.randint(min_inclusive, max_inclusive)
-    return val
+def get_random_integer(min_inclusive: int, max_inclusive: int) -> int:
+    """Get a random integer between min and max, both inclusive.
+
+    The arguments are in the order the name reads. A caller passing them the
+    other way round is a bug rather than a silently different distribution, so
+    an inverted range raises instead of quietly returning 0.
+    """
+    if min_inclusive > max_inclusive:
+        raise ValueError(
+            f"min_inclusive ({min_inclusive}) is greater than "
+            f"max_inclusive ({max_inclusive})"
+        )
+    if min_inclusive == max_inclusive:
+        return min_inclusive
+    return random.randint(min_inclusive, max_inclusive)
 
 
 def get_random_work() -> str:

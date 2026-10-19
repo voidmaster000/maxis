@@ -78,6 +78,11 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+`tzdata` is in there because `zoneinfo` depends on the host for its time zone
+database. A host with a system copy (most Linux images) never uses the package;
+one without (Windows, slim containers) cannot run `/utility datetime` or fill
+the timezone autocomplete without it.
+
 ## Configuration
 
 Create a `.env` file in project root:
@@ -194,9 +199,11 @@ Documents are keyed by `name` (e.g., `balance`, `warn`, `item`, `reply`, `userse
 ```text
 maxis/
 ├── bot/
-│   ├── main.py               # wiring + the FastAPI status page
-│   ├── global_state.py       # every constant + all mutable runtime state
+│   ├── main.py               # wiring, the Discord events, the FastAPI status page
+│   ├── global_state.py       # every tuning constant + all mutable runtime state
 │   ├── database_sync.py      # syncs global_state to MongoDB
+│   ├── currencies.py         # the supported currency list (the one file-I/O module)
+│   ├── logging_setup.py      # the one place handlers and log format are decided
 │   ├── transactions.py       # credit / debit
 │   ├── helper.py             # pure shared helpers + /help rendering
 │   ├── components_listener.py
@@ -223,12 +230,19 @@ maxis/
 │   └── public/
 ├── tests/
 │   ├── conftest.py            # stand-ins for Discord + per-test state isolation
-│   ├── test_database_sync.py  # the writer and the loader
+│   ├── test_database_sync.py  # the writer, its retries, and the loader
 │   ├── test_command_tree.py   # command layout, install flags, /help
 │   ├── test_objects.py        # games, calculator, laptop, nitro, image swatch
 │   ├── test_startup.py        # what on_ready may block on, and when
-│   ├── test_modals_listener.py  # the hacker laptop modal
-│   └── test_economy.py        # money conservation and cooldowns
+│   ├── test_events.py         # on_message, on_interaction, the status page
+│   ├── test_components_listener.py  # buttons, the help dropdown, the dispatcher
+│   ├── test_modals_listener.py      # the hacker laptop modal
+│   ├── test_economy.py        # money conservation and cooldowns
+│   ├── test_moderation.py     # the moderator gate and every action
+│   ├── test_utility.py        # argument handling, custom replies, currconv
+│   ├── test_transactions.py   # credit / debit, including the failure paths
+│   ├── test_image.py          # colour validation and the files sent back
+│   └── test_helper.py         # random ranges and the currency reference data
 ├── requirements.txt
 ├── requirements-dev.txt
 └── pyproject.toml          # pyright + ruff + pytest configuration
@@ -239,14 +253,27 @@ maxis/
 `global_state` is the single source of truth for both configuration and data:
 
 - **Constants** — env config, paths, cooldowns, DB names, tuning values and the
-  reference data (`WORKS`, `CURRENCIES`). Nothing else reads an environment
-  variable or defines a module-level constant, apart from `COGS` in
-  `main.py` and the discord `Choice` objects built for a command's own
-  decorator.
+  word lists (`WORKS`). Nothing else reads an environment variable or defines a
+  module-level constant, apart from `COGS` in `main.py` and the discord
+  `Choice` objects built for a command's own decorator.
+- **Reference data on disk** — the currency list is read from
+  `resources/currencies.json`, so it lives in `currencies.py` rather than
+  `global_state`. That keeps the module every other module imports free of file
+  I/O, and it is the one place that reports a missing or malformed list.
 - **Runtime data** — the mutable collections the cogs share. `database_sync`
   loads it at startup and is the only module that talks to MongoDB, so cogs
   read `global_state`, mutate it, and call a `database_sync.save_*()`.
   Balance changes go through `credit` / `debit` in `transactions.py`.
+
+Saves are queued to one writer thread, which retries a failing document a few
+times and logs an error rather than dropping it if it keeps failing.
+
+### Logging
+
+Every module asks for `logging.getLogger(__name__)` and never configures a
+handler. `logging_setup.setup_logging()` runs once in `main.py`'s entry point and
+decides the format, so a deploy gets timestamps, levels and module names on one
+stream instead of a wall of `print`.
 
 ### Command layout
 

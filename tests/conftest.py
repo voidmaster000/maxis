@@ -119,9 +119,12 @@ class FakeInteraction:
         self.guild = object() if guild else None
         self.client: Any = None
         self.data: Any = None
+        self.message: Any = None
         self.sent: list[tuple[Any, Any]] = []
         self.edited: list[Any] = []
         self.followups: list[Any] = []
+        self.followup_views: list[Any] = []
+        self.modals: list[Any] = []
         self.deferred = False
 
         interaction = self
@@ -146,11 +149,15 @@ class FakeInteraction:
             async def defer(_self, *, ephemeral=False, thinking=False):
                 interaction.deferred = True
 
+            async def send_modal(_self, modal, **kwargs):
+                interaction.modals.append(modal)
+
         class _Followup:
             async def send(
                 _self, *, embed=None, view=None, content=None, ephemeral=False, **kwargs
             ):
                 interaction.followups.append(embed)
+                interaction.followup_views.append(view)
 
         self.response = _Response()
         self.followup = _Followup()

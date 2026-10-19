@@ -172,7 +172,7 @@ class Economy(commands.GroupCog):
 
         global_state.user_worked_times[user_id] = datetime.now(UTC)
         work_msg = get_random_work()
-        earn = get_random_integer(500, 100)
+        earn = get_random_integer(100, 500)
         if await credit(earn, interaction.user, interaction):
             embed = discord.Embed(
                 title=f"{interaction.user.display_name} Worked",
@@ -241,9 +241,9 @@ class Economy(commands.GroupCog):
         global_state.user_robbed_times[commander_id] = datetime.now(UTC)
         database_sync.save_robs()
 
-        rob_value = get_random_integer(5000, 1000)
+        rob_value = get_random_integer(1000, 5000)
         while global_state.balance_map[user.id] < rob_value:
-            rob_value = get_random_integer(5000, 1000)
+            rob_value = get_random_integer(1000, 5000)
 
         if await debit(rob_value, user, interaction):
             if await credit(rob_value, interaction.user, interaction):

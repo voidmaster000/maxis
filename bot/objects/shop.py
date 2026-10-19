@@ -2,6 +2,7 @@
 Shop and ShopItem classes for the economy system
 """
 
+import logging
 from collections.abc import Callable, Coroutine
 
 import discord
@@ -12,6 +13,8 @@ from bot.helper import get_random_color, reply_error
 from bot.objects.hacker_laptop import HackerLaptop
 from bot.objects.nitro import use_nitro
 from bot.transactions import debit
+
+logger = logging.getLogger(__name__)
 
 type UseFunc = Callable[[discord.Interaction], Coroutine[None, None, None]]
 
@@ -110,8 +113,8 @@ class ShopItem:
                     color=get_random_color(),
                 )
             )
-        except Exception as ex:
-            print(f"Error buying item: {ex}")
+        except Exception:
+            logger.exception("Error buying item")
 
 
 class Shop:

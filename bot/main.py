@@ -3,6 +3,7 @@ Main bot file - Entry point for Maxis
 """
 
 import asyncio
+import logging
 import threading
 from collections.abc import Sequence
 from typing import Any
@@ -26,8 +27,11 @@ from bot.commands.moderation_commands import Moderation
 from bot.commands.utility_commands import Utility
 from bot.components_listener import ComponentsListener
 from bot.helper import get_random_color
+from bot.logging_setup import setup_logging
 from bot.modals_listener import ModalsListener
 from bot.objects.user_settings import UserSettings
+
+logger = logging.getLogger(__name__)
 
 # Each category of slash commands is a GroupCog, which registers as an
 # app_commands.Group on the tree. This order is the order the groups appear in
@@ -42,6 +46,10 @@ _cogs_loaded = False
 # every reconnect, and re-reading the database and re-fetching every member of
 # every guild on each one costs a lot of API quota for no new information.
 _initialised = False
+
+# The status page binds a port, so it is started once for the process rather
+# than once per reconnect. See _start_status_page.
+_status_page_started = False
 
 
 async def setup_slash_commands(bot: commands.Bot) -> None:
@@ -117,7 +125,7 @@ async def on_ready():
     """Called when bot is ready"""
     global _cogs_loaded, _initialised
 
-    print(f"{bot.user} has logged in!")
+    logger.info("%s has logged in!", bot.user)
 
     # Cogs must be registered before the command tree can be synced.
     # on_ready can fire again after a reconnect, and re-adding a cog raises.
@@ -144,9 +152,9 @@ async def on_ready():
 
         try:
             synced = await bot.tree.sync()
-            print(f"Synced {len(synced)} command(s)")
-        except Exception as e:
-            print(f"Failed to sync commands: {e}")
+            logger.info("Synced %d command(s)", len(synced))
+        except Exception:
+            logger.exception("Failed to sync commands")
 
     # Start web server (after bot is ready so we have bot.user.id)
     _start_status_page()
@@ -154,8 +162,8 @@ async def on_ready():
     invite_url = discord.utils.oauth_url(
         getattr(bot.user, "id", 0), permissions=discord.Permissions(administrator=True)
     )
-    print(f"Invite link for Maxis: {invite_url}")
-    print(f"Web server: http://localhost:{global_state.PORT}/")
+    logger.info("Invite link for Maxis: %s", invite_url)
+    logger.info("Web server: http://localhost:%s/", global_state.PORT)
 
 
 @bot.event
@@ -224,17 +232,27 @@ async def status_page(request: Request):
 
 
 def _start_status_page() -> None:
-    """Serve the status page on a daemon thread."""
+    """Serve the status page on a daemon thread, once per process.
+
+    on_ready fires again after every reconnect, and this binds a port. Starting
+    a second uvicorn on a port already in use raises inside the new thread,
+    where nothing is waiting to see it, so the guard is what keeps reconnects
+    from quietly stacking failed servers.
+    """
+    global _status_page_started
+    if _status_page_started:
+        return
+    _status_page_started = True
 
     def run() -> None:
         uvicorn.run(web_app, host="0.0.0.0", port=global_state.PORT, log_level="info")
 
     threading.Thread(target=run, daemon=True).start()
-    print(f"Web server started on http://localhost:{global_state.PORT}/")
+    logger.info("Web server started on http://localhost:%s/", global_state.PORT)
 
 
 if __name__ == "__main__":
-    database_sync.load_all()
+    setup_logging()
     try:
         bot.run(global_state.TOKEN)
     finally:

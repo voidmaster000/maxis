@@ -5,6 +5,7 @@ requested, on one shared connection, and that a failure never takes the rest
 down with it.
 """
 
+import logging
 import threading
 import time
 
@@ -91,13 +92,61 @@ def test_every_document_is_written_with_an_upsert(collection):
 # ----------------------------------------------------------------- safety
 
 
-def test_one_failing_document_does_not_stop_the_others(collection):
+def test_one_failing_document_does_not_stop_the_others(collection, monkeypatch):
+    monkeypatch.setattr(database_sync, "_RETRY_DELAY_SECONDS", 0)
     collection.fail_names = {"warn"}
     for name in ("balance", "warn", "inventory"):
         database_sync._save(name, [1], [1])
     database_sync.flush()
 
     assert {name for name, _ in collection.writes} == {"balance", "inventory"}
+
+
+class FlakyCollection(FakeCollection):
+    """Fails its first N writes, then behaves.
+
+    The usual cause of a failed save is a blip, so the retry is about attempts
+    rather than documents; this counts them.
+    """
+
+    def __init__(self, failures: int) -> None:
+        super().__init__()
+        self.remaining_failures = failures
+        self.attempts = 0
+
+    def replace_one(self, filt, doc, upsert=False):
+        self.attempts += 1
+        if self.remaining_failures:
+            self.remaining_failures -= 1
+            raise RuntimeError("simulated transient failure")
+        super().replace_one(filt, doc, upsert=upsert)
+
+
+def test_a_transient_failure_is_retried(monkeypatch):
+    monkeypatch.setattr(database_sync, "_RETRY_DELAY_SECONDS", 0)
+    fake = FlakyCollection(failures=1)
+    monkeypatch.setattr(database_sync, "_collection", lambda: fake, raising=False)
+
+    database_sync._save("balance", [1], [1])
+    database_sync.flush()
+
+    assert values(fake) == [[1]]
+    assert fake.attempts == 2
+
+
+def test_a_save_that_keeps_failing_is_reported_rather_than_dropped(monkeypatch, caplog):
+    """The write is given up on, but never in silence."""
+    monkeypatch.setattr(database_sync, "_RETRY_DELAY_SECONDS", 0)
+    fake = FlakyCollection(failures=database_sync._SAVE_ATTEMPTS)
+    monkeypatch.setattr(database_sync, "_collection", lambda: fake, raising=False)
+
+    with caplog.at_level(logging.ERROR, logger="bot.database_sync"):
+        database_sync._save("balance", [1], [1])
+        database_sync.flush()
+
+    assert fake.attempts == database_sync._SAVE_ATTEMPTS
+    assert fake.writes == []
+    assert "balance" in caplog.text
 
 
 def test_saving_never_blocks_the_caller(collection):

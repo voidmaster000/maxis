@@ -6,10 +6,14 @@ Every balance change in the bot goes through `credit` or `debit`, so the
 lives in exactly one place.
 """
 
+import logging
+
 import discord
 
 from bot import database_sync, global_state
 from bot.helper import get_random_color
+
+logger = logging.getLogger(__name__)
 
 
 async def _error(interaction: discord.Interaction, message: str) -> None:
@@ -44,8 +48,10 @@ async def _notify(
 
     try:
         await user.send(embed=embed)
-    except Exception as e:
-        print(f"Error sending DM: {e}")
+    except Exception:
+        # A closed DM is ordinary, not a failed transaction: the balance change
+        # has already been applied and is saved either way.
+        logger.warning("Could not send a bank DM to %s", user.id, exc_info=True)
 
 
 def _balance(user: discord.User | discord.Member) -> int:

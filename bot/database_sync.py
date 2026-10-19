@@ -11,7 +11,9 @@ database back. One writer keeps saves in the order they were requested, and
 superseded snapshots are collapsed rather than written.
 """
 
+import logging
 import threading
+import time
 from datetime import UTC, datetime
 from typing import Any, TypedDict
 
@@ -20,6 +22,8 @@ import pymongo
 from bot import global_state
 from bot.objects.user_settings import UserSettings
 from bot.objects.warn import Warn
+
+logger = logging.getLogger(__name__)
 
 
 class Doc(TypedDict):
@@ -40,6 +44,14 @@ _inflight = 0
 _wake = threading.Event()
 _worker: threading.Thread | None = None
 _client: pymongo.MongoClient | None = None
+
+# How a save that fails is handled. It is retried a few times before being given
+# up on, because the usual cause is a blip rather than a bad document. A save
+# that is still failing after that is logged at error level with its traceback
+# rather than dropped in silence -- and the next save of the same document
+# carries the whole current state, so a later write repairs it.
+_SAVE_ATTEMPTS = 3
+_RETRY_DELAY_SECONDS = 0.5
 
 # Every document this bot persists. A name that is absent from the database is
 # a fresh install rather than a failure, so writing one is allowed; a name that
@@ -81,6 +93,24 @@ def _collection() -> Any:
     return _client[global_state.DATABASE][global_state.COLLECTION]
 
 
+def _write(name: str, doc: Doc) -> None:
+    """Replace one document, retrying a transient failure a few times."""
+    for attempt in range(1, _SAVE_ATTEMPTS + 1):
+        try:
+            _collection().replace_one({"name": name}, doc, upsert=True)
+            return
+        except Exception:
+            if attempt == _SAVE_ATTEMPTS:
+                logger.exception(
+                    "Gave up saving '%s' after %d attempts; the next save of "
+                    "that document will carry the whole current state",
+                    name,
+                    _SAVE_ATTEMPTS,
+                )
+                return
+            time.sleep(_RETRY_DELAY_SECONDS * attempt)
+
+
 def _writer() -> None:
     """Drain pending documents until the process exits."""
     global _inflight
@@ -94,10 +124,7 @@ def _writer() -> None:
             _inflight += 1
         try:
             for name, doc in batch:
-                try:
-                    _collection().replace_one({"name": name}, doc, upsert=True)
-                except Exception as e:
-                    print(f"Error saving '{name}': {e}")
+                _write(name, doc)
         finally:
             with _lock:
                 _inflight -= 1
@@ -139,13 +166,16 @@ def _may_replace(name: str, keys: list[Any]) -> bool:
     """
     stored = _loaded_counts.get(name)
     if stored is None:
-        print(
-            f"Refusing to save '{name}': it was never loaded, so what is in "
-            f"memory is not what is stored."
+        logger.warning(
+            "Refusing to save '%s': it was never loaded, so what is in memory "
+            "is not what is stored",
+            name,
         )
         return False
     if not keys and stored:
-        print(f"Refusing to replace {stored} stored '{name}' entry(ies) with none.")
+        logger.warning(
+            "Refusing to replace %d stored '%s' entry(ies) with none", stored, name
+        )
         return False
     return True
 
@@ -324,15 +354,15 @@ def load_all() -> None:
             seen.add(name)
             try:
                 _load_doc(doc)
-            except Exception as e:
+            except Exception:
                 # Explicit rather than absent: this one was seen and could not
                 # be read, which is what save_* needs to know to refuse.
                 _loaded_counts[name] = None
-                print(f"Error loading document '{name}': {e}")
+                logger.exception("Error loading document '%s'", name)
         connected = True
-        print("Retrieved all data.")
-    except Exception as e:
-        print(f"Error initializing data: {e}")
+        logger.info("Retrieved all data.")
+    except Exception:
+        logger.exception("Error initializing data")
 
     for name in DOCUMENTS:
         if name not in seen:
@@ -412,7 +442,7 @@ def _load_doc(doc: Doc) -> None:
         _replace(global_state.laptop_history, dict(zip(keys, vals, strict=True)))
 
     else:
-        print(f"Unknown document '{name}' found! Skipping")
+        logger.warning("Unknown document '%s' found! Skipping", name)
         return
 
     # Only reached when the document parsed cleanly, which is what lets
