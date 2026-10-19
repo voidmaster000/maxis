@@ -238,12 +238,12 @@ async def _send_image(
     await interaction.followup.send(embed=embed, files=files)
 
 
+# group_name is given rather than taken from the class name: GroupCog
+# kebab-cases that, which would install this as /a-i. The docstring below is the
+# group's description in Discord, which caps it at 100 characters, so it stays
+# one line like the other categories.
 class AI(commands.GroupCog, group_name="ai"):
-    """AI commands (the /ai category).
-
-    The group name is given rather than taken from the class: GroupCog
-    kebab-cases the class name, which would install this as /a-i.
-    """
+    """AI slash commands (the /ai category)."""
 
     def __init__(self) -> None:
         self.client = HackClubAI()

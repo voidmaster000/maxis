@@ -188,3 +188,47 @@ def test_help_takes_one_optional_category():
 
     assert [p.name for p in parameters] == ["category"]
     assert parameters[0].required is False
+
+
+# ----------------------------------------------------------------- limits
+
+
+# Discord caps a description at 100 characters and rejects the entire sync with
+# error 50035 rather than trimming it -- which only shows up at deploy, when the
+# tree is uploaded. discord.py validates names at decoration, so these are the
+# lengths nothing else checks. One of them did reach the server: the /ai group
+# took its description from a two-paragraph docstring and came out at 161.
+MAX_DESCRIPTION = 100
+MAX_CHOICE = 100
+
+
+def walk_commands():
+    """Every group and command on the tree, children included."""
+    stack = list(bot.tree.get_commands())
+    while stack:
+        command = stack.pop(0)
+        yield command
+        stack = list(getattr(command, "commands", [])) + stack
+
+
+def test_no_group_or_command_description_is_too_long():
+    for command in walk_commands():
+        assert len(str(command.description)) <= MAX_DESCRIPTION, command.name
+
+
+def test_no_parameter_description_is_too_long():
+    for command in walk_commands():
+        for parameter in getattr(command, "parameters", []):
+            assert len(str(parameter.description or "")) <= MAX_DESCRIPTION, (
+                f"{command.name} {parameter.name}"
+            )
+
+
+def test_every_registered_choice_fits():
+    """Autocomplete choices are built at run time, but a fixed choice list is
+    uploaded with the command and has to obey the same limits."""
+    for command in walk_commands():
+        for parameter in getattr(command, "parameters", []):
+            for choice in parameter.choices or []:
+                assert len(str(choice.name)) <= MAX_CHOICE, choice.name
+                assert len(str(choice.value)) <= MAX_CHOICE, choice.value
