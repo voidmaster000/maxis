@@ -45,6 +45,29 @@ async def _reply_no_such_item(interaction: discord.Interaction, item: str) -> No
     )
 
 
+def _leaderboard_embed(
+    entries: list[tuple[str, int]], *, scope: str, empty: str
+) -> discord.Embed:
+    """The five richest accounts as an embed, or the empty-state one.
+
+    Both leaderboards rank the same way and print the same rows; they differ
+    only in where the names come from and what they call the set they are
+    ranking, which is all they hand over here.
+    """
+    ranked = sorted(entries, key=lambda entry: entry[1], reverse=True)[:5]
+    if not ranked:
+        return discord.Embed(title=empty, color=get_random_color())
+
+    return discord.Embed(
+        title=f"Top {len(ranked)} richest user(s) {scope}:-",
+        description="\n".join(
+            f"{place}) {label} (:coin: {balance})"
+            for place, (label, balance) in enumerate(ranked, start=1)
+        ),
+        color=get_random_color(),
+    )
+
+
 class Economy(commands.GroupCog):
     """Economy slash commands (the /economy category)."""
 
@@ -331,31 +354,15 @@ class Economy(commands.GroupCog):
             await reply_error(interaction, "This command only works in servers!")
             return
 
-        users: list[tuple[discord.Member, int]] = []
-        for member in interaction.guild.members:
-            if not member.bot and member.id in global_state.balance_map:
-                users.append((member, global_state.balance_map[member.id]))
-
-        users.sort(key=lambda x: x[1], reverse=True)
-        users = users[:5]  # Top 5
-
-        if users:
-            formatted = "\n".join(
-                [
-                    f"{i + 1}) {user[0].display_name} (:coin: {user[1]})"
-                    for i, user in enumerate(users)
-                ]
-            )
-            embed = discord.Embed(
-                title=f"Top {len(users)} richest user(s) in {interaction.guild.name}:-",
-                description=formatted,
-                color=get_random_color(),
-            )
-        else:
-            embed = discord.Embed(
-                title="No one has more than :coin: 0 in this server!",
-                color=get_random_color(),
-            )
+        embed = _leaderboard_embed(
+            [
+                (member.display_name, global_state.balance_map[member.id])
+                for member in interaction.guild.members
+                if not member.bot and member.id in global_state.balance_map
+            ],
+            scope=f"in {interaction.guild.name}",
+            empty="No one has more than :coin: 0 in this server!",
+        )
 
         await interaction.response.send_message(embed=embed)
 
@@ -366,7 +373,7 @@ class Economy(commands.GroupCog):
     async def global_leaderboard(self, interaction: discord.Interaction):
         await interaction.response.defer()
 
-        users: list[tuple[discord.User, int]] = []
+        named: list[tuple[str, int]] = []
         # snapshot the balances: fetch_user awaits, and any credit or debit
         # running at the same time could add a new account mid-loop
         for user_id, balance in list(global_state.balance_map.items()):
@@ -376,28 +383,13 @@ class Economy(commands.GroupCog):
                 # account gone, or Discord would not tell us who this is
                 continue
             if not user.bot:
-                users.append((user, balance))
+                named.append((str(user), balance))
 
-        users.sort(key=lambda x: x[1], reverse=True)
-        users = users[:5]  # Top 5
-
-        if users:
-            formatted = "\n".join(
-                [
-                    f"{i + 1}) {user[0]} (:coin: {user[1]})"
-                    for i, user in enumerate(users)
-                ]
-            )
-            embed = discord.Embed(
-                title=f"Top {len(users)} richest user(s) of Maxis:-",
-                description=formatted,
-                color=get_random_color(),
-            )
-        else:
-            embed = discord.Embed(
-                title="No one has more than :coin: 0 in our database!",
-                color=get_random_color(),
-            )
+        embed = _leaderboard_embed(
+            named,
+            scope="of Maxis",
+            empty="No one has more than :coin: 0 in our database!",
+        )
 
         await interaction.followup.send(embed=embed)
 

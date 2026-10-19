@@ -1,7 +1,9 @@
 """The economy: money must be conserved, and cooldowns must actually gate."""
 
 from datetime import UTC
+from types import SimpleNamespace
 
+import discord
 import pytest
 
 from bot import database_sync, global_state
@@ -271,3 +273,133 @@ async def test_buying_uses_the_item_its_effect_before_returning(economy):
     )
     assert left <= 1, f"{left:.1f}s still on cooldown"
     assert global_state.inventory[12]["Nitro"] == 0
+
+
+# ------------------------------------------------------------- leaderboards
+#
+# The two leaderboards shared a copy of the same ranking. These pin the
+# behaviour on both sides of the split, since that is what the shared helper
+# has to keep agreeing with.
+
+
+class FakeGuild:
+    """The two attributes /economy leaderboard reads."""
+
+    def __init__(self, name: str = "Server", members=None) -> None:
+        self.name = name
+        self.members = members or []
+
+
+class FakeClient:
+    """fetch_user, with the ids it is supposed to be unable to resolve."""
+
+    def __init__(self, known: dict[int, FakeUser], missing=()) -> None:
+        self.known = known
+        self.missing = set(missing)
+
+    async def fetch_user(self, user_id: int):
+        if user_id in self.missing:
+            raise discord.NotFound(
+                SimpleNamespace(status=404, reason="Not Found"), "unknown user"
+            )
+        return self.known[user_id]
+
+
+def server_interaction(interaction: FakeInteraction, members) -> FakeInteraction:
+    interaction.guild = FakeGuild("Server", members)
+    return interaction
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_ranks_the_server_and_stops_at_five(economy):
+    members = [FakeUser(user_id, f"user{user_id}") for user_id in range(1, 8)]
+    global_state.balance_map = {user_id: user_id * 100 for user_id in range(1, 8)}
+    interaction = server_interaction(FakeInteraction(FakeUser(1)), members)
+
+    await economy.leaderboard.callback(economy, interaction)
+
+    embed, _ = interaction.sent[0]
+    assert embed.title == "Top 5 richest user(s) in Server:-"
+    lines = embed.description.splitlines()
+    assert len(lines) == 5
+    assert lines[0].startswith("1) user7 (")
+    assert lines[-1].startswith("5) user3 (")
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_leaves_out_bots_and_non_members(economy):
+    """Only people in this server who have an account here can be ranked."""
+    robot = FakeUser(2, "robot")
+    robot.bot = True
+    members = [FakeUser(1, "member"), robot, FakeUser(3, "stranger")]
+    # 3 is in the server but has never been paid; 4 has an account elsewhere
+    global_state.balance_map = {1: 50, 2: 900, 4: 900}
+    interaction = server_interaction(FakeInteraction(FakeUser(1)), members)
+
+    await economy.leaderboard.callback(economy, interaction)
+
+    embed, _ = interaction.sent[0]
+    assert embed.title == "Top 1 richest user(s) in Server:-"
+    assert "member" in embed.description
+    assert "robot" not in embed.description
+    assert "stranger" not in embed.description
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_says_so_when_nobody_has_an_account(economy):
+    interaction = server_interaction(FakeInteraction(FakeUser(1)), [FakeUser(1)])
+
+    await economy.leaderboard.callback(economy, interaction)
+
+    embed, _ = interaction.sent[0]
+    assert embed.title == "No one has more than :coin: 0 in this server!"
+    assert embed.description is None
+
+
+@pytest.mark.asyncio
+async def test_leaderboard_is_for_servers_only(economy):
+    interaction = FakeInteraction(FakeUser(1), guild=False)
+
+    await economy.leaderboard.callback(economy, interaction)
+
+    embed, _ = interaction.sent[0]
+    assert "only works in servers" in embed.description
+
+
+@pytest.mark.asyncio
+async def test_global_leaderboard_spans_the_whole_database(economy):
+    global_state.balance_map = {1: 10, 2: 900, 3: 500}
+    interaction = FakeInteraction(FakeUser(1))
+    interaction.client = FakeClient(
+        {1: FakeUser(1), 2: FakeUser(2, "rich"), 3: FakeUser(3)}
+    )
+
+    await economy.global_leaderboard.callback(economy, interaction)
+
+    embed = interaction.followups[0]
+    assert embed.title == "Top 3 richest user(s) of Maxis:-"
+    assert embed.description.splitlines()[0] == "1) rich (:coin: 900)"
+
+
+@pytest.mark.asyncio
+async def test_global_leaderboard_skips_accounts_discord_will_not_return(economy):
+    """A closed account stays in balance_map, and must not break the ranking."""
+    global_state.balance_map = {1: 10, 2: 900}
+    interaction = FakeInteraction(FakeUser(1))
+    interaction.client = FakeClient({1: FakeUser(1)}, missing={2})
+
+    await economy.global_leaderboard.callback(economy, interaction)
+
+    embed = interaction.followups[0]
+    assert embed.title == "Top 1 richest user(s) of Maxis:-"
+
+
+@pytest.mark.asyncio
+async def test_global_leaderboard_says_so_when_the_database_is_empty(economy):
+    interaction = FakeInteraction(FakeUser(1))
+    interaction.client = FakeClient({})
+
+    await economy.global_leaderboard.callback(economy, interaction)
+
+    embed = interaction.followups[0]
+    assert embed.title == "No one has more than :coin: 0 in our database!"
