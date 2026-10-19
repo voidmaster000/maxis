@@ -26,8 +26,6 @@ from bot.objects.user_settings import UserSettings
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-
 # Discord choice objects for /utility currconv, built from global_state.
 CURRENCY_CHOICES = [
     app_commands.Choice(name=code, value=code) for code in global_state.CURRENCY_CODES
