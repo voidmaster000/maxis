@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 from bot import database_sync, global_state
-from bot.commands.utility_commands import Utility
+from bot.commands.utility_commands import CURRENCY_CHOICES, Utility
 from bot.objects.user_settings import UserSettings
 from tests.conftest import FakeInteraction, FakeUser
 
@@ -339,6 +339,14 @@ def stub_rate_api(monkeypatch, response=None, *, raises=None):
 
 
 CONVERT = (10.0, "USD", "EUR")
+
+
+def test_currconv_offers_every_supported_currency_as_a_choice():
+    """Discord fixes the choice list when the command is defined, so it has to
+    agree with the constant users are validated against."""
+    assert [choice.value for choice in CURRENCY_CHOICES] == list(
+        global_state.CURRENCY_CODES
+    )
 
 
 async def test_currconv_requires_an_unknown_currency_to_be_rejected(utility):

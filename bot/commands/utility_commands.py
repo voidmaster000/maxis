@@ -18,7 +18,6 @@ from discord import app_commands
 from discord.ext import commands
 
 from bot import database_sync, global_state
-from bot.currencies import CURRENCY_CODES
 from bot.helper import get_random_color, reply_error, timezone_autocomplete
 from bot.objects.calculator import Calculator
 from bot.objects.rps import RpsGame
@@ -29,9 +28,9 @@ logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 
-# Discord choice objects for /utility currconv, built from the currency list.
+# Discord choice objects for /utility currconv, built from global_state.
 CURRENCY_CHOICES = [
-    app_commands.Choice(name=code, value=code) for code in CURRENCY_CODES
+    app_commands.Choice(name=code, value=code) for code in global_state.CURRENCY_CODES
 ]
 
 
@@ -591,18 +590,9 @@ class Utility(commands.GroupCog):
     ):
         await interaction.response.defer()
 
-        # Validate currencies against the fixed list
-        valid_codes = CURRENCY_CODES
-        if not valid_codes:
-            await interaction.followup.send(
-                embed=discord.Embed(
-                    title="Error!",
-                    description="Could not load currency list!",
-                    color=get_random_color(),
-                )
-            )
-            return
-
+        # Validate currencies against the fixed list. It cannot be empty: it is
+        # a constant in global_state, so there is nothing to fall back from.
+        valid_codes = global_state.CURRENCY_CODES
         if (
             from_currency.upper() not in valid_codes
             or to_currency.upper() not in valid_codes

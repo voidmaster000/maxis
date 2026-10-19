@@ -1,16 +1,14 @@
-"""The shared helpers, and the currency reference data they sit next to.
+"""The shared helpers.
 
-Both were changed during the cleanup: the random helper had its arguments the
-wrong way round relative to its own name, and the currency list used to be read
-from disk at import of `global_state`, which everything imports.
+`get_random_integer` had its arguments the wrong way round relative to its own
+name, so the order is pinned here. What matters about the currency list now that
+it is a constant in `global_state` is its shape: Discord rejects a command that
+offers more choices than one option allows.
 """
-
-import json
-import logging
 
 import pytest
 
-from bot import currencies
+from bot import global_state
 from bot.helper import get_random_integer
 
 # ------------------------------------------------------------------- random
@@ -41,53 +39,18 @@ def test_an_inverted_range_is_an_error_rather_than_a_zero():
 # ---------------------------------------------------------------- currency
 
 
-def test_the_shipped_currency_list_loads():
-    assert "USD" in currencies.CURRENCY_CODES
-    assert currencies.CURRENCIES[0]["code"] == "USD"
+def test_the_currency_list_fits_the_choice_limit():
+    """One command option may carry at most 25 choices, and currconv uses one."""
+    assert len(global_state.CURRENCY_CODES) <= 25
 
 
-def _point_at(monkeypatch, tmp_path, content: str):
-    """Make the module read a file of our choosing instead of the shipped one."""
-    path = tmp_path / "currencies.json"
-    path.write_text(content)
-    monkeypatch.setattr(currencies, "resource_path", lambda name: path)
-    return path
+def test_the_currency_list_is_unique_three_letter_codes():
+    codes = global_state.CURRENCY_CODES
+    assert len(set(codes)) == len(codes), "a duplicate choice would be rejected"
+    assert all(code.isalpha() and code.isupper() and len(code) == 3 for code in codes)
 
 
-def test_a_missing_currency_file_is_reported_not_raised(monkeypatch, tmp_path, caplog):
-    monkeypatch.setattr(
-        currencies, "resource_path", lambda name: tmp_path / "gone.json"
-    )
-
-    with caplog.at_level(logging.ERROR, logger="bot.currencies"):
-        loaded = currencies._load()
-
-    assert loaded == []
-    assert "Could not read the currency list" in caplog.text
-
-
-def test_a_malformed_currency_file_is_reported(monkeypatch, tmp_path, caplog):
-    _point_at(monkeypatch, tmp_path, "{not json at all")
-
-    with caplog.at_level(logging.ERROR, logger="bot.currencies"):
-        loaded = currencies._load()
-
-    assert loaded == []
-    assert "Could not read the currency list" in caplog.text
-
-
-def test_a_wrong_shaped_currency_file_is_reported(monkeypatch, tmp_path, caplog):
-    """Well-formed JSON is not the same as the shape we asked for."""
-    _point_at(monkeypatch, tmp_path, json.dumps({"currencies": "USD, EUR"}))
-
-    with caplog.at_level(logging.ERROR, logger="bot.currencies"):
-        loaded = currencies._load()
-
-    assert loaded == []
-    assert "does not contain a 'currencies' list" in caplog.text
-
-
-def test_a_good_currency_file_loads(monkeypatch, tmp_path):
-    _point_at(monkeypatch, tmp_path, json.dumps({"currencies": [{"code": "GBP"}]}))
-
-    assert currencies._load() == [{"code": "GBP"}]
+def test_the_currency_list_still_contains_the_major_pair():
+    """A cheap guard against the list being emptied or replaced wholesale."""
+    assert "USD" in global_state.CURRENCY_CODES
+    assert "EUR" in global_state.CURRENCY_CODES

@@ -6,9 +6,8 @@ place to look and one place to change. Below the constants sits the mutable data
 the cogs share; persistence of that data is handled by `bot.database_sync`, and
 balance changes by `bot.transactions`.
 
-Reference data that has to be read from disk is deliberately *not* here:
-`global_state` is imported by everything, so it stays free of file I/O. The
-currency list lives in `bot.currencies` instead.
+Nothing here touches the filesystem: `global_state` is imported by everything,
+so it stays free of I/O, and every value it holds is a literal.
 
 This module imports nothing from the rest of the bot except `bot.objects`,
 which are plain data classes. That is what lets every cog do a plain
@@ -122,6 +121,40 @@ WORKS: list[str] = [
     "repaired cars at workshop for a day and earned",
     "won a lucky draw and earned",
 ]
+
+
+# The currencies /utility currconv accepts. This is a product decision rather
+# than reference data: these are the codes the exchange-rate API quotes, and the
+# list stops at 25 because Discord allows no more choices than that on a single
+# command option. The order is user-visible -- Discord lists the choices in it,
+# and so does the "valid codes" hint in the error message.
+CURRENCY_CODES: tuple[str, ...] = (
+    "USD",
+    "EUR",
+    "JPY",
+    "GBP",
+    "AUD",
+    "CAD",
+    "CHF",
+    "CNY",
+    "SEK",
+    "MXN",
+    "NZD",
+    "SGD",
+    "HKD",
+    "NOK",
+    "KRW",
+    "TRY",
+    "INR",
+    "RUB",
+    "BRL",
+    "ZAR",
+    "DKK",
+    "PLN",
+    "TWD",
+    "THB",
+    "MYR",
+)
 
 
 # ---------------------------------------------------------------------------
