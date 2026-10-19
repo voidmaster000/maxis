@@ -11,12 +11,15 @@ request is in flight.
 
 import asyncio
 import base64
+import logging
 import math
 from typing import Any, NamedTuple
 
 import requests
 
 from bot.core import global_state
+
+logger = logging.getLogger(__name__)
 
 
 class AIError(Exception):
@@ -78,9 +81,26 @@ class HackClubAI:
         choices = data.get("choices") or []
         message = choices[0].get("message") if choices else None
         text = str((message or {}).get("content") or "").strip()
-        if not text:
-            raise AIError("The AI service returned an empty answer.")
         usage = data.get("usage") or {}
+        if not text:
+            # A reasoning model spends max_tokens on hidden thinking before it
+            # writes anything, so running out is a different failure from an
+            # upstream that simply sent nothing back.
+            finish = choices[0].get("finish_reason") if choices else None
+            details = usage.get("completion_tokens_details") or {}
+            logger.warning(
+                "Empty answer from %s: finish=%s completion=%s reasoning=%s",
+                data.get("model") or model,
+                finish,
+                usage.get("completion_tokens"),
+                details.get("reasoning_tokens"),
+            )
+            if finish == "length":
+                raise AIError(
+                    "The model ran out of reply budget before it answered. "
+                    "Try a shorter question or another model."
+                )
+            raise AIError("The AI service returned an empty answer.")
         return ChatReply(
             text=text,
             model=str(data.get("model") or model),

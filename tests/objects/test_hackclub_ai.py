@@ -133,6 +133,19 @@ async def test_an_answer_with_no_text_is_an_error(client, body):
         await client.chat("deepseek/deepseek-v4.1-flash", [])
 
 
+async def test_a_truncated_answer_is_reported_as_a_budget_problem(client):
+    client._post = lambda *args, **kwargs: {
+        "choices": [{"message": {"content": None}, "finish_reason": "length"}],
+        "usage": {
+            "completion_tokens": 1500,
+            "completion_tokens_details": {"reasoning_tokens": 1490},
+        },
+    }
+
+    with pytest.raises(AIError, match="reply budget"):
+        await client.chat("deepseek/deepseek-v4.1-flash", [])
+
+
 # ----------------------------------------------------------------- image
 
 

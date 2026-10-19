@@ -56,7 +56,7 @@ def resource_path(*parts: str) -> Path:
 # Bot metadata
 # ---------------------------------------------------------------------------
 
-VERSION: str = "5.2.0"
+VERSION: str = "5.2.1"
 
 INVITE_URL: str = (
     "https://discord.com/api/oauth2/authorize"
@@ -102,9 +102,12 @@ MONTHLY_COOLDOWN: int = 2592000
 HACKCLUB_AI_KEY: str = os.getenv("HACKCLUB_AI_KEY", "")
 HACKCLUB_AI_BASE: str = "https://ai.hackclub.com/proxy/v1"
 
-# Text is the cheap half of the quota: the default costs about $0.00006 for a
-# 700-token answer, where Gemini Flash costs about $0.002.
-AI_DEFAULT_TEXT_MODEL: str = "deepseek/deepseek-v4.1-flash"
+# Text is the cheap half of the quota: a real question through the default came
+# back in 133 tokens for $0.00006, so even the 500-a-day bot cap is cents. It is
+# also non-reasoning and answered in under two seconds, which matters more here
+# than the last bit of quality: a reasoning model shares max_tokens with its
+# hidden thinking and can run out before it writes a word.
+AI_DEFAULT_TEXT_MODEL: str = "google/gemini-2.5-flash-lite"
 AI_DEFAULT_IMAGE_MODEL: str = "google/gemini-2.5-flash-image"
 
 AI_SYSTEM_PROMPT: str = (
@@ -114,23 +117,25 @@ AI_SYSTEM_PROMPT: str = (
 )
 
 # Bounded so one answer cannot run away with the daily quota, and so it fits in
-# a single embed almost every time.
-AI_MAX_ANSWER_TOKENS: int = 800
+# a single embed almost every time. It is shared with hidden reasoning, which is
+# why it is several times a chat reply: a normal answer uses about 150.
+AI_MAX_ANSWER_TOKENS: int = 1500
 AI_MAX_ANSWER_CHARS: int = 4096
 
-# Used until /models answers, and if it cannot be reached at all.
+# Used until /models answers, and if it cannot be reached at all. Empty input in
+# the autocomplete lists these in order, so the default comes first.
 AI_TEXT_MODEL_FALLBACKS: tuple[str, ...] = (
+    "google/gemini-2.5-flash-lite",
+    "meta-llama/llama-3.3-70b-instruct",
+    "google/gemini-2.5-flash",
     "deepseek/deepseek-v4.1-flash",
     "deepseek/deepseek-v4-pro",
-    "google/gemini-2.5-flash",
-    "google/gemini-2.5-flash-lite",
     "anthropic/claude-haiku-5.5",
     "anthropic/claude-sonnet-5.5",
     "openai/gpt-5-mini",
     "openai/gpt-6.1-sol",
     "qwen/qwen3.7-flash",
     "qwen/qwen3-32b",
-    "meta-llama/llama-3.3-70b-instruct",
     "x-ai/grok-4.7",
 )
 AI_IMAGE_MODEL_FALLBACKS: tuple[str, ...] = (
