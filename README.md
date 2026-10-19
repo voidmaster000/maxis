@@ -202,7 +202,6 @@ maxis/
 │   ├── main.py               # wiring, the Discord events, the FastAPI status page
 │   ├── global_state.py       # every tuning constant + all mutable runtime state
 │   ├── database_sync.py      # syncs global_state to MongoDB
-│   ├── logging_setup.py      # the one place handlers and log format are decided
 │   ├── transactions.py       # credit / debit
 │   ├── helper.py             # pure shared helpers + /help rendering
 │   ├── components_listener.py
@@ -271,9 +270,11 @@ times and logs an error rather than dropping it if it keeps failing.
 ### Logging
 
 Every module asks for `logging.getLogger(__name__)` and never configures a
-handler. `logging_setup.setup_logging()` runs once in `main.py`'s entry point and
-decides the format, so a deploy gets timestamps, levels and module names on one
-stream instead of a wall of `print`.
+handler. `main.setup_logging()` runs once from the `__main__` block and decides
+the format, so a deploy gets timestamps, levels and module names on one stream
+instead of a wall of `print`. It is a function rather than a statement at import
+so that importing `main` — which the tests do — never reconfigures the host's
+logging.
 
 ### Command layout
 

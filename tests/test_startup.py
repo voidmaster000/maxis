@@ -16,7 +16,6 @@ import pytest
 
 import bot.main as main
 from bot import database_sync
-from bot.logging_setup import setup_logging
 
 
 @pytest.fixture(autouse=True)
@@ -172,7 +171,7 @@ def test_logging_is_configured_in_one_place_with_a_time_and_a_level(monkeypatch)
         logging, "basicConfig", lambda **kwargs: configured.update(kwargs)
     )
 
-    setup_logging()
+    main.setup_logging()
 
     assert configured["level"] == logging.INFO
     assert "%(asctime)s" in configured["format"]

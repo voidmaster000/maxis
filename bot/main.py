@@ -27,7 +27,6 @@ from bot.commands.moderation_commands import Moderation
 from bot.commands.utility_commands import Utility
 from bot.components_listener import ComponentsListener
 from bot.helper import get_random_color
-from bot.logging_setup import setup_logging
 from bot.modals_listener import ModalsListener
 from bot.objects.user_settings import UserSettings
 
@@ -249,6 +248,22 @@ def _start_status_page() -> None:
 
     threading.Thread(target=run, daemon=True).start()
     logger.info("Web server started on http://localhost:%s/", global_state.PORT)
+
+
+def setup_logging(level: int = logging.INFO) -> None:
+    """Send log records to stderr with a timestamp, level and module name.
+
+    Every other module only asks for its own logger. This is the one place
+    handlers are configured, and it is called from the entry point rather than
+    at import, so importing this module (as the tests do) never reconfigures a
+    host's logging. basicConfig is a no-op if the root logger already has a
+    handler, which is what makes that safe.
+    """
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
 
 
 if __name__ == "__main__":
