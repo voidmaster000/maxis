@@ -204,14 +204,15 @@ maxis/
 │   ├── database_sync.py      # syncs global_state to MongoDB
 │   ├── transactions.py       # credit / debit
 │   ├── helper.py             # pure shared helpers + /help rendering
-│   ├── components_listener.py
-│   ├── modals_listener.py
 │   ├── commands/
 │   │   ├── utility_commands.py       # /utility
 │   │   ├── economy_commands.py       # /economy
 │   │   ├── moderation_commands.py    # /moderation
 │   │   ├── image_commands.py         # /image
 │   │   └── help_command.py           # /help (top level, not a category)
+│   ├── listeners/
+│   │   ├── components_listener.py    # button and select menu clicks
+│   │   └── modals_listener.py        # modal submissions
 │   └── objects/
 │       ├── shop.py             # the catalogue and its lookups
 │       ├── hacker_laptop.py    # the laptop item and its command history

@@ -25,9 +25,9 @@ from bot.commands.help_command import add_help_command
 from bot.commands.image_commands import Image
 from bot.commands.moderation_commands import Moderation
 from bot.commands.utility_commands import Utility
-from bot.components_listener import ComponentsListener
 from bot.helper import get_random_color
-from bot.modals_listener import ModalsListener
+from bot.listeners.components_listener import ComponentsListener
+from bot.listeners.modals_listener import ModalsListener
 from bot.objects.user_settings import UserSettings
 
 logger = logging.getLogger(__name__)

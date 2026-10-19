@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from bot.components_listener import ComponentsListener
+from bot.listeners.components_listener import ComponentsListener
 from bot.main import bot, setup_slash_commands
 from tests.conftest import FakeInteraction, FakeUser
 

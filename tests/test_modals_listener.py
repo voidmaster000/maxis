@@ -9,7 +9,7 @@ interaction to answer.
 import pytest
 
 from bot import global_state
-from bot.modals_listener import ModalsListener
+from bot.listeners.modals_listener import ModalsListener
 from tests.conftest import FakeInteraction, FakeUser
 
 OWNER_ID = 42
