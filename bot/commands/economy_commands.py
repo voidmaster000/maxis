@@ -1,3 +1,5 @@
+"""Economy slash commands for Maxis."""
+
 from datetime import UTC, datetime
 
 import discord
