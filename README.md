@@ -38,6 +38,14 @@ Maxis is a multi-purpose Discord bot built with `discord.py`, with economy, mode
 - Warn, clearwarns, getwarns
 - Clear messages and channel nuke
 
+### AI
+
+- Chat with a per-user, per-channel memory (`/ai chat`, `/ai ask`, `/ai reset`)
+- Image generation with a chosen aspect ratio (`/ai image`)
+- Model chosen per command from the live catalogue, offered by autocomplete
+- Daily per-user and bot-wide caps, a cooldown, and a moderation pass before
+  any image is paid for
+
 ### Web
 
 - FastAPI web server (`/`) showing online status + invite button
@@ -61,10 +69,11 @@ the machine. `requirements.txt` is pinned to the versions in `./venv`;
 `requirements-dev.txt` pins the tools above. Ruff lints and formats, so the
 formatting and the import order come out of one config and cannot disagree.
 
-The tests run offline. Nothing touches Discord or MongoDB: commands are driven
-through the stand-ins in `tests/conftest.py`, and the database layer is given a
-fake collection. Each test starts from the bot's start-up state and leaves
-nothing queued behind, so the suite passes in any order.
+The tests run offline. Nothing touches Discord, MongoDB or the network:
+commands are driven through the stand-ins in `tests/conftest.py`, the database
+layer is given a fake collection, and any outbound HTTP is turned into an error.
+Each test starts from the bot's start-up state and leaves nothing queued behind,
+so the suite passes in any order.
 
 ## Requirements
 
@@ -92,6 +101,7 @@ TOKEN=your_discord_bot_token
 CONNSTR=your_mongodb_connection_string
 PORT=8080
 EXAPI=your_exchange_rate_api_key
+HACKCLUB_AI_KEY=your_hack_club_ai_key
 ```
 
 ### Environment Variables
@@ -100,6 +110,7 @@ EXAPI=your_exchange_rate_api_key
 - `CONNSTR` (required): MongoDB connection string
 - `PORT` (optional, default `8080`): FastAPI web server port
 - `EXAPI` (optional but required for `/currconv`): ExchangeRate API key
+- `HACKCLUB_AI_KEY` (optional but required for `/ai`): Hack Club AI key
 
 ## Run
 
@@ -170,6 +181,27 @@ top-level, because it documents the categories rather than being one.
 - `/image makecolor <red> <green> <blue>`
 - `/image randomcolor`
 
+### `/ai`
+
+- `/ai chat <prompt> [model]`
+- `/ai ask <prompt> [model]`
+- `/ai image <prompt> [model] [aspect_ratio]`
+- `/ai reset`
+- `/ai usage`
+
+The two text commands differ only in memory: `/ai chat` resends the last ten
+exchanges of that channel's conversation with the caller, `/ai ask` sends the
+one question. Memory is keyed by channel and user, kept in `global_state`, and
+never written to MongoDB, so a restart forgets it and `/ai reset` clears it on
+demand.
+
+`model` is optional everywhere and is offered through autocomplete: the cog
+fetches the live model list from the proxy once at load, and falls back to a
+curated list in `global_state` if that fetch fails. Image models are labelled
+with what they cost in credits, which is how the daily image budget is
+counted. Both sides are capped per user and bot-wide, and the counters roll
+over at 00:00 UTC, which is when the API's daily spend limit resets.
+
 ## Shop Items (Current)
 
 - Juice
@@ -210,6 +242,7 @@ maxis/
 │   │   ├── economy_commands.py       # /economy
 │   │   ├── moderation_commands.py    # /moderation
 │   │   ├── image_commands.py         # /image
+│   │   ├── ai_commands.py            # /ai
 │   │   └── help_command.py           # /help (top level, not a category)
 │   ├── listeners/
 │   │   ├── components_listener.py    # button and select menu clicks
@@ -221,6 +254,7 @@ maxis/
 │       ├── tictactoe.py        # the /utility ttt game
 │       ├── rps.py              # the /utility rps game
 │       ├── calculator.py       # the /utility calculate evaluator
+│       ├── hackclub_ai.py      # the Hack Club AI client used by /ai
 │       ├── user_settings.py
 │       └── warn.py
 ├── resources/
@@ -240,12 +274,14 @@ maxis/
 │   │   ├── test_economy.py              # money conservation and cooldowns
 │   │   ├── test_moderation.py           # the moderator gate and every action
 │   │   ├── test_utility.py              # argument handling, custom replies, currconv
-│   │   └── test_image.py                # colour validation and the files sent back
+│   │   ├── test_image.py                # colour validation and the files sent back
+│   │   └── test_ai.py                   # budgets, chat memory, the files sent back
 │   ├── listeners/
 │   │   ├── test_components_listener.py  # buttons, the help dropdown, the dispatcher
 │   │   └── test_modals_listener.py      # the hacker laptop modal
 │   └── objects/
-│       └── test_objects.py              # games, calculator, laptop, nitro, image swatch
+│       ├── test_objects.py              # games, calculator, laptop, nitro, image swatch
+│       └── test_hackclub_ai.py          # the AI client's parsing and error mapping
 ├── requirements.txt
 ├── requirements-dev.txt
 └── pyproject.toml          # pyright + ruff + pytest configuration
@@ -263,7 +299,10 @@ maxis/
 - **Runtime data** — the mutable collections the cogs share. `database_sync`
   loads it at startup and is the only module that talks to MongoDB, so cogs
   read `global_state`, mutate it, and call a `database_sync.save_*()`.
-  Balance changes go through `credit` / `debit` in `transactions.py`.
+  Balance changes go through `credit` / `debit` in `transactions.py`. The AI
+  bookkeeping is the exception: the conversation memory is chat context rather
+  than bot data, so it stays in memory and a restart forgets it, and the daily
+  counters reset at 00:00 UTC or on restart, whichever comes first.
 
 The currency list is a constant rather than a data file on purpose. Discord
 allows at most 25 choices on one command option, so the set has to be curated

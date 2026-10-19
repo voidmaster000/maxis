@@ -91,6 +91,107 @@ WEEKLY_COOLDOWN: int = 604800
 MONTHLY_COOLDOWN: int = 2592000
 
 # ---------------------------------------------------------------------------
+# Hack Club AI
+#
+# The proxy is OpenRouter-compatible: chat and image generation share one
+# endpoint, and /models is public. Models are suggested by autocomplete rather
+# than fixed choices, because there are hundreds of them and Discord allows 25
+# choices on one option.
+# ---------------------------------------------------------------------------
+
+HACKCLUB_AI_KEY: str = os.getenv("HACKCLUB_AI_KEY", "")
+HACKCLUB_AI_BASE: str = "https://ai.hackclub.com/proxy/v1"
+
+# Text is the cheap half of the quota: the default costs about $0.00006 for a
+# 700-token answer, where Gemini Flash costs about $0.002.
+AI_DEFAULT_TEXT_MODEL: str = "deepseek/deepseek-v4.1-flash"
+AI_DEFAULT_IMAGE_MODEL: str = "google/gemini-2.5-flash-image"
+
+AI_SYSTEM_PROMPT: str = (
+    "You are Maxis, a friendly Discord bot. Answer in Discord markdown, keep "
+    "replies short unless asked for detail, and refuse requests for explicit, "
+    "hateful or illegal content."
+)
+
+# Bounded so one answer cannot run away with the daily quota, and so it fits in
+# a single embed almost every time.
+AI_MAX_ANSWER_TOKENS: int = 800
+AI_MAX_ANSWER_CHARS: int = 4096
+
+# Used until /models answers, and if it cannot be reached at all.
+AI_TEXT_MODEL_FALLBACKS: tuple[str, ...] = (
+    "deepseek/deepseek-v4.1-flash",
+    "deepseek/deepseek-v4-pro",
+    "google/gemini-2.5-flash",
+    "google/gemini-2.5-flash-lite",
+    "anthropic/claude-haiku-5.5",
+    "anthropic/claude-sonnet-5.5",
+    "openai/gpt-5-mini",
+    "openai/gpt-6.1-sol",
+    "qwen/qwen3.7-flash",
+    "qwen/qwen3-32b",
+    "meta-llama/llama-3.3-70b-instruct",
+    "x-ai/grok-4.7",
+)
+AI_IMAGE_MODEL_FALLBACKS: tuple[str, ...] = (
+    "google/gemini-2.5-flash-image",
+    "google/gemini-3.1-flash-lite-image",
+    "google/gemini-3.1-flash-image",
+    "openai/gpt-5-image-mini",
+    "google/gemini-3-pro-image",
+)
+
+# Cost of an image in credits, matching AI_IMAGE_CREDIT_USD. The live prices
+# replace this at startup; these cover the same models by hand.
+AI_IMAGE_CREDIT_FALLBACKS: dict[str, int] = {
+    "google/gemini-2.5-flash-image": 1,
+    "google/gemini-3.1-flash-lite-image": 1,
+    "google/gemini-3.1-flash-image": 2,
+    "openai/gpt-5-image-mini": 1,
+    "google/gemini-3-pro-image": 4,
+}
+
+# Discord returns at most 25 autocomplete choices, so that is also the most the
+# picker can show per keystroke.
+AI_MODEL_CHOICES: int = 25
+
+# Image output is billed per image token and Gemini emits 1290 per picture, so
+# one credit is roughly one $0.04 image. The daily caps are counted in credits.
+AI_IMAGE_TOKENS_PER_REQUEST: int = 1290
+AI_IMAGE_CREDIT_USD: float = 0.04
+
+AI_ASPECT_RATIOS: tuple[str, ...] = (
+    "1:1",
+    "2:3",
+    "3:2",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "9:16",
+    "16:9",
+    "21:9",
+)
+
+# Sized for ten people: four image credits each is $1.60 of the $3.00 day, and
+# the text caps leave the rest fit even if everyone picks an expensive model.
+AI_TEXT_COOLDOWN: int = 10
+AI_IMAGE_COOLDOWN: int = 300
+AI_TEXT_DAILY_REQUESTS: int = 50
+AI_IMAGE_DAILY_CREDITS: int = 4
+AI_TEXT_DAILY_TOTAL: int = 500
+AI_IMAGE_DAILY_TOTAL: int = 40
+
+AI_TEXT_TIMEOUT: int = 60
+AI_IMAGE_TIMEOUT: int = 180
+AI_MODERATION_TIMEOUT: int = 20
+AI_MODELS_TIMEOUT: int = 10
+
+# How much of a conversation is resent with each /ai chat turn. A turn is a user
+# message plus the answer, so this is ten exchanges.
+AI_MAX_HISTORY_MESSAGES: int = 20
+
+# ---------------------------------------------------------------------------
 # Item tuning
 # ---------------------------------------------------------------------------
 
@@ -190,3 +291,23 @@ warn_map: dict[int, dict[int, Warn]] = {}
 
 # Hacker laptop command history, by user id.
 laptop_history: dict[str, list[Any]] = {}
+
+# AI model catalogue, filled from /models when /ai loads. Empty means the
+# fallbacks above are in use.
+ai_text_models: list[str] = []
+ai_image_models: list[str] = []
+ai_image_credits: dict[str, int] = {}
+
+# AI conversations, by (channel id, user id). This is chat context rather than
+# bot data, so it is never written to MongoDB.
+ai_conversations: dict[tuple[int, int], list[dict[str, str]]] = {}
+
+# AI cooldowns and daily counters. The counters reset when ai_usage_day moves
+# past the UTC date the API bills on.
+ai_text_times: dict[int, datetime] = {}
+ai_image_times: dict[int, datetime] = {}
+ai_text_usage: dict[int, int] = {}
+ai_image_usage: dict[int, int] = {}
+ai_text_total: int = 0
+ai_image_total: int = 0
+ai_usage_day: str = ""

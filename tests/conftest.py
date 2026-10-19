@@ -8,6 +8,7 @@ fake collection rather than one that quietly succeeds.
 from typing import Any
 
 import pytest
+import requests
 
 from bot.core import database_sync, global_state
 
@@ -25,6 +26,17 @@ MUTABLE_STATE = (
     "user_monthly_times",
     "warn_map",
     "laptop_history",
+    "ai_text_models",
+    "ai_image_models",
+    "ai_image_credits",
+    "ai_conversations",
+    "ai_text_times",
+    "ai_image_times",
+    "ai_text_usage",
+    "ai_image_usage",
+    "ai_text_total",
+    "ai_image_total",
+    "ai_usage_day",
 )
 
 # Captured before any fixture replaces it, for the few tests that exercise how
@@ -38,13 +50,14 @@ def isolated_state():
 
     The commands read and write these dicts in place, so without this a test
     would inherit whatever the previous one left behind and the suite would
-    only pass in one order. All of them start empty, so replacing them with a
-    fresh dict is exactly the start-up state; the original objects are handed
+    only pass in one order. All of them start empty, so an empty value of the
+    same type is exactly the start-up state; the original objects are handed
     back untouched on the way out.
     """
     saved = {name: getattr(global_state, name) for name in MUTABLE_STATE}
     for name in MUTABLE_STATE:
-        setattr(global_state, name, {})
+        value = getattr(global_state, name)
+        setattr(global_state, name, type(value)())
     try:
         yield
     finally:
@@ -60,6 +73,26 @@ class _Discarded:
 
     def find(self):
         return iter(())
+
+
+@pytest.fixture(autouse=True)
+def no_real_network(monkeypatch):
+    """Turn any outbound HTTP into an error instead of a real request.
+
+    global_state loads .env, which on a developer machine holds live keys, and
+    /ai fetches its model list when the cog is added. Without this, adding a cog
+    in a test would reach ai.hackclub.com for real. Session.request is the one
+    place requests.get, requests.post and requests.request all pass through, so
+    patching it covers every call any of this code makes.
+
+    Tests that want to see a response patch the caller themselves, and that
+    patch wins: it is applied after this fixture and undone first.
+    """
+
+    def refuse(*args, **kwargs):
+        raise requests.ConnectionError("the test suite does not make requests")
+
+    monkeypatch.setattr(requests.sessions.Session, "request", refuse)
 
 
 @pytest.fixture(autouse=True)
@@ -109,14 +142,23 @@ class FakeUser:
 class FakeInteraction:
     """Records replies instead of sending them.
 
-    `sent` holds an (embed, view) pair for every response.send_message call.
+    `sent` holds an (embed, view) pair for every response.send_message call, and
+    `followups` the embed for every followup.send. Attachments land in
+    `followup_files`, since that is where the AI and image commands put them.
     Set `client` for the commands that read the command tree off the
     interaction, which is how /help finds its categories.
     """
 
-    def __init__(self, user: FakeUser | None = None, *, guild: bool = True) -> None:
+    def __init__(
+        self,
+        user: FakeUser | None = None,
+        *,
+        guild: bool = True,
+        channel_id: int = 0,
+    ) -> None:
         self.user = user or FakeUser(1)
         self.guild = object() if guild else None
+        self.channel_id = channel_id
         self.client: Any = None
         self.data: Any = None
         self.message: Any = None
@@ -124,6 +166,7 @@ class FakeInteraction:
         self.edited: list[Any] = []
         self.followups: list[Any] = []
         self.followup_views: list[Any] = []
+        self.followup_files: list[Any] = []
         self.modals: list[Any] = []
         self.deferred = False
 
@@ -154,10 +197,22 @@ class FakeInteraction:
 
         class _Followup:
             async def send(
-                _self, *, embed=None, view=None, content=None, ephemeral=False, **kwargs
+                _self,
+                *,
+                embed=None,
+                view=None,
+                content=None,
+                ephemeral=False,
+                file=None,
+                files=None,
+                **kwargs,
             ):
                 interaction.followups.append(embed)
                 interaction.followup_views.append(view)
+                if file is not None:
+                    interaction.followup_files.append(file)
+                if files is not None:
+                    interaction.followup_files.extend(files)
 
         self.response = _Response()
         self.followup = _Followup()

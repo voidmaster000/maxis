@@ -9,7 +9,7 @@ from bot.core.helper import help_category_embed, help_group, help_groups
 from bot.main import bot, setup_slash_commands
 from tests.conftest import FakeInteraction
 
-CATEGORIES = ["utility", "moderation", "economy", "image"]
+CATEGORIES = ["utility", "moderation", "economy", "image", "ai"]
 
 
 @pytest.fixture(scope="module", autouse=True)

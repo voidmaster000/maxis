@@ -19,6 +19,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from bot.commands.ai_commands import AI
 from bot.commands.economy_commands import Economy
 from bot.commands.help_command import add_help_command
 from bot.commands.image_commands import Image
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 # app_commands.Group on the tree. This order is the order the groups appear in
 # Discord's command list, and what /help shows. /help itself is registered
 # separately, as a plain top-level command rather than a category.
-COGS = (Utility, Moderation, Economy, Image)
+COGS = (Utility, Moderation, Economy, Image, AI)
 
 # Guards against registering the command cogs twice (on_ready can fire again)
 _cogs_loaded = False
