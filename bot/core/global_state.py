@@ -3,15 +3,15 @@ Global configuration and runtime state for Maxis.
 
 Every module-level tuning constant in the project lives here, so there is one
 place to look and one place to change. Below the constants sits the mutable data
-the cogs share; persistence of that data is handled by `bot.database_sync`, and
-balance changes by `bot.transactions`.
+the cogs share; persistence of that data is handled by `bot.core.database_sync`, and
+balance changes by `bot.core.transactions`.
 
 Nothing here touches the filesystem: `global_state` is imported by everything,
 so it stays free of I/O, and every value it holds is a literal.
 
 This module imports nothing from the rest of the bot except `bot.objects`,
 which are plain data classes. That is what lets every cog do a plain
-module-level `from bot import global_state` without creating an import cycle.
+module-level `from bot.core import global_state` without creating an import cycle.
 """
 
 import os
@@ -40,7 +40,10 @@ EXAPI: str = os.getenv("EXAPI", "")
 # Paths
 # ---------------------------------------------------------------------------
 
-PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
+# This module sits two levels below the repo root: bot/core/global_state.py.
+# The depth is pinned by a test, so a future move fails there instead of
+# quietly pointing every resource lookup at the wrong directory.
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 RESOURCES_DIR: Path = PROJECT_ROOT / "resources"
 
 
@@ -160,7 +163,7 @@ CURRENCY_CODES: tuple[str, ...] = (
 # ---------------------------------------------------------------------------
 # Mutable runtime state
 #
-# Loaded from the database at startup and persisted by bot.database_sync.
+# Loaded from the database at startup and persisted by bot.core.database_sync.
 # ---------------------------------------------------------------------------
 
 # Custom replies, set with /utility reply and matched against incoming messages.

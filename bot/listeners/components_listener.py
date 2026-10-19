@@ -7,7 +7,7 @@ from typing import cast
 import discord
 from discord.ext import commands
 
-from bot.helper import help_category_embed, help_group, reply_error
+from bot.core.helper import help_category_embed, help_group, reply_error
 from bot.objects.rps import RpsGame
 from bot.objects.tictactoe import TicTacToe
 

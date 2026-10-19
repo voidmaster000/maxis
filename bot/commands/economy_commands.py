@@ -6,15 +6,15 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot import database_sync, global_state
-from bot.helper import (
+from bot.core import database_sync, global_state
+from bot.core.helper import (
     get_random_color,
     get_random_integer,
     get_random_work,
     reply_error,
 )
+from bot.core.transactions import credit, debit
 from bot.objects.shop import Shop
-from bot.transactions import credit, debit
 
 
 def _split_duration(seconds: int) -> tuple[int, int, int, int]:

@@ -200,10 +200,11 @@ Documents are keyed by `name` (e.g., `balance`, `warn`, `item`, `reply`, `userse
 maxis/
 ├── bot/
 │   ├── main.py               # wiring, the Discord events, the FastAPI status page
-│   ├── global_state.py       # every tuning constant + all mutable runtime state
-│   ├── database_sync.py      # syncs global_state to MongoDB
-│   ├── transactions.py       # credit / debit
-│   ├── helper.py             # pure shared helpers + /help rendering
+│   ├── core/
+│   │   ├── global_state.py           # every tuning constant + all mutable runtime state
+│   │   ├── database_sync.py          # syncs global_state to MongoDB
+│   │   ├── transactions.py           # credit / debit
+│   │   └── helper.py                 # pure shared helpers + /help rendering
 │   ├── commands/
 │   │   ├── utility_commands.py       # /utility
 │   │   ├── economy_commands.py       # /economy

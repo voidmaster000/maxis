@@ -9,7 +9,7 @@ loop over a tuple built at the call site.
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 
-from bot import database_sync, global_state
+from bot.core import database_sync, global_state
 
 
 class NitroBoost:

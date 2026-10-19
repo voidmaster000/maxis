@@ -8,7 +8,7 @@ interaction to answer.
 
 import pytest
 
-from bot import global_state
+from bot.core import global_state
 from bot.listeners.modals_listener import ModalsListener
 from tests.conftest import FakeInteraction, FakeUser
 
@@ -39,7 +39,7 @@ def quiet_saves(monkeypatch):
         "save_user_settings",
         "save_replies",
     ):
-        monkeypatch.setattr(f"bot.database_sync.{name}", lambda: None)
+        monkeypatch.setattr(f"bot.core.database_sync.{name}", lambda: None)
     global_state.laptop_history.clear()
     global_state.inventory = {}
 

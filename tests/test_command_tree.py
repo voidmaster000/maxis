@@ -3,7 +3,7 @@
 import pytest
 from discord import app_commands
 
-from bot.helper import help_category_embed, help_group, help_groups
+from bot.core.helper import help_category_embed, help_group, help_groups
 from bot.main import bot, setup_slash_commands
 from tests.conftest import FakeInteraction
 

@@ -1,15 +1,17 @@
-"""The shared helpers.
+"""The shared helpers and the state they live next to.
 
 `get_random_integer` had its arguments the wrong way round relative to its own
 name, so the order is pinned here. What matters about the currency list now that
 it is a constant in `global_state` is its shape: Discord rejects a command that
-offers more choices than one option allows.
+offers more choices than one option allows. And `global_state` finds the bundled
+resources by counting directories up from its own file, so that count is pinned
+too.
 """
 
 import pytest
 
-from bot import global_state
-from bot.helper import get_random_integer
+from bot.core import global_state
+from bot.core.helper import get_random_integer
 
 # ------------------------------------------------------------------- random
 
@@ -54,3 +56,18 @@ def test_the_currency_list_still_contains_the_major_pair():
     """A cheap guard against the list being emptied or replaced wholesale."""
     assert "USD" in global_state.CURRENCY_CODES
     assert "EUR" in global_state.CURRENCY_CODES
+
+
+# ---------------------------------------------------------------- resources
+
+
+def test_the_bundled_resources_are_found_from_the_package():
+    """The status page template and the font are read from the repo root.
+
+    `PROJECT_ROOT` counts directories up from this module, so moving
+    `global_state.py` into a package has to move that count with it. When it did
+    not, the lookups pointed at `bot/resources`, which does not exist.
+    """
+    assert (global_state.PROJECT_ROOT / "resources").is_dir()
+    assert global_state.resource_path("index.html").is_file()
+    assert global_state.resource_path("Inter-SemiBold.ttf").is_file()

@@ -7,10 +7,10 @@ from datetime import UTC, datetime
 
 import discord
 
-from bot import global_state
-from bot.helper import get_random_color
+from bot.core import global_state
+from bot.core.helper import get_random_color
+from bot.core.transactions import credit, debit
 from bot.objects.hacker_laptop import HackerLaptop, LaptopHistory
-from bot.transactions import credit, debit
 
 logger = logging.getLogger(__name__)
 

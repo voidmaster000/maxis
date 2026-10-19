@@ -12,8 +12,8 @@ from typing import NotRequired, TypedDict
 
 import discord
 
-from bot import database_sync, global_state
-from bot.helper import get_random_color
+from bot.core import database_sync, global_state
+from bot.core.helper import get_random_color
 
 
 class CommandHistoryEntry(TypedDict):

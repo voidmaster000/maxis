@@ -17,7 +17,7 @@ from discord import app_commands
 from discord.ext import commands
 from discord.ui import Select, View
 
-from bot.helper import (
+from bot.core.helper import (
     get_random_color,
     help_category_embed,
     help_group,

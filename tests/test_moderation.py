@@ -12,8 +12,8 @@ from types import SimpleNamespace
 import discord
 import pytest
 
-from bot import database_sync, global_state
 from bot.commands.moderation_commands import Moderation, require_moderator
+from bot.core import database_sync, global_state
 from bot.objects.warn import Warn
 from tests.conftest import FakeInteraction, FakeUser
 

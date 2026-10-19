@@ -17,8 +17,8 @@ import requests
 from discord import app_commands
 from discord.ext import commands
 
-from bot import database_sync, global_state
-from bot.helper import get_random_color, reply_error, timezone_autocomplete
+from bot.core import database_sync, global_state
+from bot.core.helper import get_random_color, reply_error, timezone_autocomplete
 from bot.objects.calculator import Calculator
 from bot.objects.rps import RpsGame
 from bot.objects.tictactoe import TicTacToe

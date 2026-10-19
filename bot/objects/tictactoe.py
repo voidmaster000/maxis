@@ -9,7 +9,7 @@ game says to show.
 
 import discord
 
-from bot.helper import get_random_color
+from bot.core.helper import get_random_color
 
 
 class TicTacToe:

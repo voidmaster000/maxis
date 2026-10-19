@@ -11,8 +11,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from bot import database_sync, global_state
 from bot.commands.utility_commands import CURRENCY_CHOICES, Utility
+from bot.core import database_sync, global_state
 from bot.objects.user_settings import UserSettings
 from tests.conftest import FakeInteraction, FakeUser
 

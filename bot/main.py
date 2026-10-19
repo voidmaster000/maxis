@@ -19,13 +19,13 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from bot import database_sync, global_state
 from bot.commands.economy_commands import Economy
 from bot.commands.help_command import add_help_command
 from bot.commands.image_commands import Image
 from bot.commands.moderation_commands import Moderation
 from bot.commands.utility_commands import Utility
-from bot.helper import get_random_color
+from bot.core import database_sync, global_state
+from bot.core.helper import get_random_color
 from bot.listeners.components_listener import ComponentsListener
 from bot.listeners.modals_listener import ModalsListener
 from bot.objects.user_settings import UserSettings

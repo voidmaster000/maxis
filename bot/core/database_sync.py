@@ -1,7 +1,7 @@
 """
 Database sync for Maxis.
 
-Loads and saves `bot.global_state` to MongoDB. Every group of state is stored as
+Loads and saves `bot.core.global_state` to MongoDB. Every group of state is stored as
 one document holding parallel `key` and `val` lists, tagged by `name`.
 
 Saving goes through a single background writer thread that shares one Mongo
@@ -19,7 +19,7 @@ from typing import Any, TypedDict
 
 import pymongo
 
-from bot import global_state
+from bot.core import global_state
 from bot.objects.user_settings import UserSettings
 from bot.objects.warn import Warn
 

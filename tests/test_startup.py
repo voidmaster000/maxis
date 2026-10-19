@@ -15,7 +15,7 @@ import time
 import pytest
 
 import bot.main as main
-from bot import database_sync
+from bot.core import database_sync
 
 
 @pytest.fixture(autouse=True)

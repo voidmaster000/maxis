@@ -7,9 +7,9 @@ that happen to call them.
 
 import pytest
 
-from bot import database_sync, global_state
+from bot.core import database_sync, global_state
+from bot.core.transactions import credit, debit
 from bot.objects.user_settings import UserSettings
-from bot.transactions import credit, debit
 from tests.conftest import FakeInteraction, FakeUser
 
 

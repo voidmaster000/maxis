@@ -10,8 +10,8 @@ import logging
 
 import discord
 
-from bot import database_sync, global_state
-from bot.helper import get_random_color
+from bot.core import database_sync, global_state
+from bot.core.helper import get_random_color
 
 logger = logging.getLogger(__name__)
 

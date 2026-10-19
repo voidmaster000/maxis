@@ -8,7 +8,7 @@ import pytest
 from PIL import Image as PILImage
 from PIL import ImageDraw
 
-from bot import database_sync, global_state
+from bot.core import database_sync, global_state
 from bot.objects.calculator import Calculator
 from bot.objects.hacker_laptop import HackerLaptop, LaptopHistory
 from bot.objects.nitro import NitroBoost

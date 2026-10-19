@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 
-from bot import database_sync, global_state
+from bot.core import database_sync, global_state
 
 # The mutable containers the commands read and write. Tests are free to assign
 # straight over these, which is why they are listed rather than discovered.

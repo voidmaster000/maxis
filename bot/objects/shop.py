@@ -8,11 +8,11 @@ from collections.abc import Callable, Coroutine
 import discord
 from discord import app_commands
 
-from bot import database_sync, global_state
-from bot.helper import get_random_color, reply_error
+from bot.core import database_sync, global_state
+from bot.core.helper import get_random_color, reply_error
+from bot.core.transactions import debit
 from bot.objects.hacker_laptop import HackerLaptop
 from bot.objects.nitro import use_nitro
-from bot.transactions import debit
 
 logger = logging.getLogger(__name__)
 

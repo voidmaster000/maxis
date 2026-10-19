@@ -11,8 +11,8 @@ from discord.ext import commands
 from PIL import Image as PILImage
 from PIL import ImageDraw, ImageFont
 
-from bot import global_state
-from bot.helper import get_random_color
+from bot.core import global_state
+from bot.core.helper import get_random_color
 
 
 def _font(size: int):

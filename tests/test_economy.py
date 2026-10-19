@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import discord
 import pytest
 
-from bot import database_sync, global_state
 from bot.commands.economy_commands import Economy, _split_duration
+from bot.core import database_sync, global_state
 from bot.objects.shop import Shop
 from tests.conftest import FakeInteraction, FakeUser
 

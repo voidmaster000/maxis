@@ -4,8 +4,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from bot import database_sync, global_state
-from bot.helper import get_random_color, reply_error
+from bot.core import database_sync, global_state
+from bot.core.helper import get_random_color, reply_error
 from bot.objects.warn import Warn
 
 

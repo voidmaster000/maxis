@@ -11,7 +11,7 @@ import discord
 import pytest
 
 import bot.main as main
-from bot import global_state
+from bot.core import global_state
 from tests.conftest import FakeUser
 
 

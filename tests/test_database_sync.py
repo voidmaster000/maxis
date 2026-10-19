@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from bot import database_sync, global_state
+from bot.core import database_sync, global_state
 from tests.conftest import REAL_COLLECTION
 
 
@@ -140,7 +140,7 @@ def test_a_save_that_keeps_failing_is_reported_rather_than_dropped(monkeypatch, 
     fake = FlakyCollection(failures=database_sync._SAVE_ATTEMPTS)
     monkeypatch.setattr(database_sync, "_collection", lambda: fake, raising=False)
 
-    with caplog.at_level(logging.ERROR, logger="bot.database_sync"):
+    with caplog.at_level(logging.ERROR, logger="bot.core.database_sync"):
         database_sync._save("balance", [1], [1])
         database_sync.flush()
 
