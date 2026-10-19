@@ -45,7 +45,7 @@ async def _category_autocomplete(
     """Suggest the registered help categories."""
     bot = cast(commands.Bot, interaction.client)
     return [
-        app_commands.Choice(name=group.name, value=group.name)
+        app_commands.Choice[str](name=group.name, value=group.name)
         for group in help_groups(bot)
         if current.lower() in group.name
     ]

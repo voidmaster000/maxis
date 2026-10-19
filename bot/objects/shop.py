@@ -205,7 +205,7 @@ class Shop:
     def choices(cls) -> list[app_commands.Choice[str]]:
         """The autocomplete choices for a command's `item` argument."""
         return [
-            app_commands.Choice(name=item.name, value=item.command)
+            app_commands.Choice[str](name=item.name, value=item.command)
             for item in cls.items
         ]
 

@@ -59,10 +59,14 @@ def _ordered(models: list[str], preferred: tuple[str, ...], current: str) -> lis
     return first + [model for model in models if model not in first]
 
 
+# Choice is generic, so without pinning it to [str] a checker infers the whole
+# constraint set (str | int | float) and rejects the declared return type.
+
+
 def _text_choices(current: str) -> list[app_commands.Choice[str]]:
     ordered = _ordered(_text_models(), global_state.AI_TEXT_MODEL_FALLBACKS, current)
     return [
-        app_commands.Choice(name=model, value=model)
+        app_commands.Choice[str](name=model, value=model)
         for model in ordered[: global_state.AI_MODEL_CHOICES]
     ]
 
@@ -70,7 +74,7 @@ def _text_choices(current: str) -> list[app_commands.Choice[str]]:
 def _image_choices(current: str) -> list[app_commands.Choice[str]]:
     ordered = _ordered(_image_models(), global_state.AI_IMAGE_MODEL_FALLBACKS, current)
     return [
-        app_commands.Choice(
+        app_commands.Choice[str](
             name=f"{model} ({_image_credits(model)} credit(s))", value=model
         )
         for model in ordered[: global_state.AI_MODEL_CHOICES]
