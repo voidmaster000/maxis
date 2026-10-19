@@ -152,7 +152,14 @@ async def on_ready():
 
         try:
             synced = await bot.tree.sync()
-            logger.info("Synced %d command(s)", len(synced))
+            # Discord holds one top-level entry per group, with its subcommands
+            # nested inside, so this count is the six top-level commands rather
+            # than the forty-odd invocable ones. Naming them says which.
+            logger.info(
+                "Synced %d top-level command(s): %s",
+                len(synced),
+                ", ".join(sorted(command.name for command in synced)),
+            )
         except Exception:
             logger.exception("Failed to sync commands")
 

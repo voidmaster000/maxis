@@ -39,6 +39,12 @@ def test_the_categories_register_in_the_declared_order():
     assert [g.name for g in groups()] == CATEGORIES
 
 
+def test_discord_registers_one_entry_per_category():
+    """This is what the startup log counts: to Discord a group is one command,
+    with its subcommands nested inside it, however many of them there are."""
+    assert sorted(top_level()) == sorted([*CATEGORIES, "help"])
+
+
 def test_the_commands_live_under_their_category():
     assert "ping" in [c.name for c in top_level()["utility"].commands]
     assert "daily" in [c.name for c in top_level()["economy"].commands]
