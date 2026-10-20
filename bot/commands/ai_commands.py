@@ -11,6 +11,7 @@ the text side room to run all day on a cheap model.
 """
 
 import logging
+import re
 from datetime import UTC, datetime
 from io import BytesIO
 
@@ -50,6 +51,26 @@ def _image_credits(model: str) -> int:
     return credits.get(model, 1)
 
 
+def _credit_label(credits: int) -> str:
+    return f"{credits} credit" if credits == 1 else f"{credits} credits"
+
+
+# Autocomplete choices carry the price in their label, and the Discord client
+# submits the label it displayed rather than the value behind it, so a picked
+# image model arrives as "openai/gpt-5-image (2 credits)". Strip that back to
+# the id the proxy knows, and match the list case-insensitively so the spelling
+# sent on is always the one it published. The singular form is what older
+# clients still have cached.
+_CREDIT_LABEL = re.compile(r"^(?P<model>.+?) \(\d+ credit(?:s|\(s\))?\)$")
+
+
+def _model_id(raw: str, models: list[str]) -> str:
+    """Reduce whatever was submitted to a model id from the known list."""
+    candidate = _CREDIT_LABEL.sub(r"\g<model>", (raw or "").strip())
+    wanted = candidate.casefold()
+    return next((model for model in models if model.casefold() == wanted), candidate)
+
+
 def _ordered(models: list[str], preferred: tuple[str, ...], current: str) -> list[str]:
     """Substring matches, or the curated names first while the box is empty."""
     if current:
@@ -75,7 +96,7 @@ def _image_choices(current: str) -> list[app_commands.Choice[str]]:
     ordered = _ordered(_image_models(), global_state.AI_IMAGE_MODEL_FALLBACKS, current)
     return [
         app_commands.Choice[str](
-            name=f"{model} ({_image_credits(model)} credit(s))", value=model
+            name=f"{model} ({_credit_label(_image_credits(model))})", value=model
         )
         for model in ordered[: global_state.AI_MODEL_CHOICES]
     ]
@@ -158,7 +179,9 @@ def _image_refusal(user_id: int, credits: int) -> str | None:
     used = global_state.ai_image_usage.get(user_id, 0)
     if used + credits > global_state.AI_IMAGE_DAILY_CREDITS:
         left = max(0, global_state.AI_IMAGE_DAILY_CREDITS - used)
-        return f"That image costs {credits} credit(s) and you have {left} left today."
+        return (
+            f"That image costs {_credit_label(credits)} and you have {left} left today."
+        )
     if global_state.ai_image_total + credits > global_state.AI_IMAGE_DAILY_TOTAL:
         return (
             "The bot has used its image credits for today. Try again after 00:00 UTC."
@@ -229,7 +252,7 @@ async def _send_image(
         discord.File(BytesIO(data), filename=f"image-{index}.png")
         for index, data in enumerate(reply.images[:4], start=1)
     ]
-    footer = f"{reply.model} ({credits} credit(s))"
+    footer = f"{reply.model} ({_credit_label(credits)})"
     if len(files) > 1:
         footer += f", {len(files)} images"
     embed = discord.Embed(description=prompt, color=get_random_color())
@@ -308,7 +331,9 @@ class AI(commands.GroupCog, group_name="ai"):
             {"role": "user", "content": prompt},
         ]
         reply = await self._chat(
-            interaction, model or global_state.AI_DEFAULT_TEXT_MODEL, messages
+            interaction,
+            _model_id(model, _text_models()) or global_state.AI_DEFAULT_TEXT_MODEL,
+            messages,
         )
         if reply is None:
             return
@@ -339,7 +364,9 @@ class AI(commands.GroupCog, group_name="ai"):
             question,
         ]
         reply = await self._chat(
-            interaction, model or global_state.AI_DEFAULT_TEXT_MODEL, messages
+            interaction,
+            _model_id(model, _text_models()) or global_state.AI_DEFAULT_TEXT_MODEL,
+            messages,
         )
         if reply is None:
             return
@@ -373,7 +400,9 @@ class AI(commands.GroupCog, group_name="ai"):
             )
             return
 
-        chosen = model or global_state.AI_DEFAULT_IMAGE_MODEL
+        chosen = (
+            _model_id(model, _image_models()) or global_state.AI_DEFAULT_IMAGE_MODEL
+        )
         credits = _image_credits(chosen)
         refusal = _image_refusal(interaction.user.id, credits)
         if refusal:

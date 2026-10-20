@@ -307,6 +307,27 @@ async def test_an_expensive_model_spends_more_credits(ai):
     assert len(ai.client.image_calls) == 1
 
 
+@pytest.mark.parametrize(
+    "label",
+    [
+        "openai/gpt-5-image (2 credits)",
+        "openai/gpt-5-image (2 credit(s))",  # what older clients have cached
+        "OPENAI/GPT-5-IMAGE (2 credits)",
+    ],
+)
+async def test_a_picked_label_is_reduced_to_the_model_it_names(ai, label):
+    global_state.ai_image_models = ["openai/gpt-5-image"]
+    global_state.ai_image_credits = {"openai/gpt-5-image": 2}
+    interaction = FakeInteraction()
+
+    # The client submits the label it showed, price and all, rather than the
+    # value behind it.
+    await ai.image.callback(ai, interaction, "a lighthouse", label)
+
+    assert ai.client.image_calls[0][0] == "openai/gpt-5-image"
+    assert global_state.ai_image_usage[1] == 2
+
+
 async def test_the_bot_wide_image_cap_stops_everyone(ai):
     global_state.ai_image_total = global_state.AI_IMAGE_DAILY_TOTAL
     interaction = FakeInteraction(FakeUser(9))

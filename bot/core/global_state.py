@@ -56,7 +56,7 @@ def resource_path(*parts: str) -> Path:
 # Bot metadata
 # ---------------------------------------------------------------------------
 
-VERSION: str = "5.2.1"
+VERSION: str = "5.2.2"
 
 INVITE_URL: str = (
     "https://discord.com/api/oauth2/authorize"
