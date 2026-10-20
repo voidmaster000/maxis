@@ -55,12 +55,13 @@ def _credit_label(credits: int) -> str:
     return f"{credits} credit" if credits == 1 else f"{credits} credits"
 
 
-# Autocomplete choices carry the price in their label, and the Discord client
-# submits the label it displayed rather than the value behind it, so a picked
-# image model arrives as "openai/gpt-5-image (2 credits)". Strip that back to
-# the id the proxy knows, and match the list case-insensitively so the spelling
-# sent on is always the one it published. The singular form is what older
-# clients still have cached.
+# Autocomplete normally sends the value behind the label, but not always: the
+# client fills the field with the label, so one that is edited afterwards (or
+# submitted from some clients) arrives as typed text -- "openai/gpt-5-image
+# (2 credits)" instead of the id. Typing allows any string at all, so reduce
+# whatever turns up to a published id, stripping the price and matching the
+# list case-insensitively so the spelling sent on is the one the proxy knows. The
+# "(s)" form is what older clients still have cached.
 _CREDIT_LABEL = re.compile(r"^(?P<model>.+?) \(\d+ credit(?:s|\(s\))?\)$")
 
 

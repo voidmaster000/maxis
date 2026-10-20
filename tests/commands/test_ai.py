@@ -320,8 +320,8 @@ async def test_a_picked_label_is_reduced_to_the_model_it_names(ai, label):
     global_state.ai_image_credits = {"openai/gpt-5-image": 2}
     interaction = FakeInteraction()
 
-    # The client submits the label it showed, price and all, rather than the
-    # value behind it.
+    # Usually the value behind a suggestion arrives; this is the case where the
+    # label it filled the field with is what gets submitted.
     await ai.image.callback(ai, interaction, "a lighthouse", label)
 
     assert ai.client.image_calls[0][0] == "openai/gpt-5-image"
